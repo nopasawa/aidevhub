@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Security Header: Content Security Policy -->
+    <!-- นโยบายนี้ช่วยป้องกันการโจมตีโดยการจำกัดแหล่งที่มาของเนื้อหาที่สามารถโหลดได้ -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.tailwindcss.com; style-src 'self' https://cdn.tailwindcss.com https://fonts.googleapis.com 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com;">
+    
+    <title>AI Dev Store - ตัวอย่าง</title>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts for Thai font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* ใช้ฟอนต์ 'Sarabun' กับทั้งหน้าเว็บและตั้งค่าพื้นหลัง */
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #2c3e50; /* สีพื้นหลังเข้ม */
+            padding: 20px;
+        }
+
+        /* สไตล์สำหรับกล่องคำเตือน */
+        .warning-box {
+            background-color: #fff3cd; /* สีพื้นหลังโทนเหลือง */
+            color: #664d03; /* สีตัวอักษร */
+            border: 1px solid #ffecb5; /* สีขอบ */
+            padding: 1rem 1.5rem;
+            margin-bottom: 1rem;
+            border-radius: 0.5rem; /* ขอบมน */
+            text-align: center;
+        }
+
+        .warning-box-title {
+            font-weight: 700; /* ตัวหนา */
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 dark:bg-gray-900">
+
+    <!-- Container หลักสำหรับจัดเนื้อหาให้อยู่กึ่งกลาง -->
+    <main class="flex items-center justify-center min-h-screen p-4">
+
+        <!-- การ์ดเมนูหลัก (เพิ่ม class 'relative' เพื่อให้รองรับ absolute positioning) -->
+        <div class="relative bg-white dark:bg-gray-800 p-8 sm:p-10 rounded-2xl shadow-2xl text-center w-full max-w-5xl">
+            
+            <!-- ตัวนับจำนวนผู้เข้าชม (ย้ายมาไว้มุมบนขวา) -->
+            <div id="visitor-counter" class="absolute top-6 right-6 flex items-center text-gray-500 dark:text-gray-400">
+                <!-- ไอคอนรูปตา (View Icon) -->
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                <span id="count-value" class="font-bold">1</span>
+                <span class="ml-1 text-sm">คน</span>
+            </div>
+
+            <!-- ส่วนหัวเรื่อง -->
+            <h1 class="text-3xl sm:text-4xl font-bold mb-8 text-gray-800 dark:text-white">AI Dev Store</h1>
+            
+            <!-- กล่องคำเตือน -->
+            <div class="warning-box">
+                <span class="warning-box-title">ข้อควรระวัง</span>
+                <p>แอปพลิเคชันทั้งหมดที่แสดงอยู่นี้เป็นเพียงระบบจำลอง (Demo) เพื่อใช้ในการนำเสนอเท่านั้น ไม่ได้มีไว้สำหรับใช้งานจริง <strong>กรุณาอย่ากรอกข้อมูลส่วนบุคคลหรือข้อมูลสำคัญใดๆ ของท่านลงในระบบ</strong></p>
+            </div>
+            
+            <!-- ปุ่มลิงก์ TikTok -->
+            <div class="my-6">
+                <a href="https://www.tiktok.com/@ai.devhub?is_from_webapp=1&sender_device=pc" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center gap-2 px-6 py-3 font-semibold text-white bg-black rounded-lg shadow-md transition-transform transform hover:scale-105 hover:bg-gray-800">
+                    <!-- ไอคอน TikTok (SVG) -->
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.01-1.58-.01-3.2-.01-4.8 0-3.51-2.9-6.39-6.41-6.39-3.52 0-6.4 2.88-6.4 6.4s2.88 6.4 6.4 6.4c.04-1.63.04-3.27.05-4.91l-4.03-.01v-4.03c1.38.01 2.75.01 4.12.02z"></path></svg>
+                    <span>ติดตาม AI Dev Hub บน TikTok</span>
+                </a>
+            </div>
+
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6">
+                
+                <a href="1.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-blue-500 dark:hover:bg-blue-600 hover:shadow-xl transform hover:-translate-y-1">
+                    <div class="flex flex-col items-center justify-center h-full">                                  
+                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">แอปพลิเคชันจัดการห้องพัก</p>
+                    </div>
+                </a>
+                
+                <a href="2.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-green-500 dark:hover:bg-green-600 hover:shadow-xl transform hover:-translate-y-1">
+                    <div class="flex flex-col items-center justify-center h-full">                                  
+                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">แอพบันทึกโอที (OT Tracker)</p>
+                    </div>
+                </a>
+
+                <a href="3.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
+                    <div class="flex flex-col items-center justify-center h-full">                                  
+                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">ระบบยืมคืนอุปกรณ์</p>
+                    </div>
+                </a>
+
+                <a href="4.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
+                    <div class="flex flex-col items-center justify-center h-full">                                  
+                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">ระบบยืม-คืนอุปกรณ์ 1</p>
+                    </div>
+                </a>
+
+                <a href="5.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
+                    <div class="flex flex-col items-center justify-center h-full">                                  
+                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">ระบบลางาน (Leave Request System)</p>
+                    </div>
+                </a>
+
+                <a href="6.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
+                    <div class="flex flex-col items-center justify-center h-full">
+                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">ระบบลางาน (Leave Request System)</p>
+                    </div>
+                </a>
+                <a href="7.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
+                    <div class="flex flex-col items-center justify-center h-full">
+                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">IT Helpdesk Application</p>
+                    </div>
+                </a>
+                <a href="8.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
+                    <div class="flex flex-col items-center justify-center h-full">
+                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">จองโต๊ะร้านอาหาร</p>
+                    </div>
+                </a>
+                <a href="9.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
+                    <div class="flex flex-col items-center justify-center h-full">
+                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">ร้านค้าออนไลน์</p>
+                    </div>
+                </a>
+                <a href="10.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
+                    <div class="flex flex-col items-center justify-center h-full">
+                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">เครื่องคำนวณอัตราการให้ยาฉีด</p>
+                    </div>
+                </a>
+                <a href="11.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
+                    <div class="flex flex-col items-center justify-center h-full">
+                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">เว็บแอปวางแผนล่วงหน้า (ส่งออก CSV ได้)</p>
+                    </div>
+                </a>
+                <a href="12.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
+                    <div class="flex flex-col items-center justify-center h-full">
+                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">เว็บฟอร์มสั่งซื้อสินค้า (พร้อมหน้ารายการสั่งซื้อ)</p>
+                    </div>
+                </a>
+                <a href="13.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
+                    <div class="flex flex-col items-center justify-center h-full">
+                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">แอปแจ้งซ่อมเครื่องจักร</p>
+                    </div>
+                </a>
+                <a href="14.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
+                    <div class="flex flex-col items-center justify-center h-full">
+                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">แอปคำนวณเงินเดือนพนักงาน (Payroll Calculator)</p>
+                    </div>
+                </a>
+                <a href="15.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
+                    <div class="flex flex-col items-center justify-center h-full">
+                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">แอปพลิเคชันคำนวณค่าน้ำประปา</p>
+                    </div>
+                </a>
+                <a href="16.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
+                    <div class="flex flex-col items-center justify-center h-full">
+                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">แอปวางแผนการเงิน</p>
+                    </div>
+                </a>
+                <a href="17.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
+                    <div class="flex flex-col items-center justify-center h-full">
+                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">ระบบ Kiosk ขายของในโรงเรียน</p>
+                    </div>
+                </a>
+                <a href="18.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
+                    <div class="flex flex-col items-center justify-center h-full">
+                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">ระบบจัดการเงินห้องเรียน (Classroom Fund Manager)</p>
+                    </div>
+                </a>
+                <a href="19.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
+                    <div class="flex flex-col items-center justify-center h-full">
+                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">ระบบจัดซื้อจัดจ้าง</p>
+                    </div>
+                </a>
+                <a href="20.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
+                    <div class="flex flex-col items-center justify-center h-full">
+                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">ระบบออมเงินอัจฉริยะ</p>
+                    </div>
+                </a>
+                <a href="21.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
+                    <div class="flex flex-col items-center justify-center h-full">
+                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">แอปเบิกจ่ายวัสดุ</p>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // สร้าง key สำหรับเก็บค่าใน localStorage
+            const counterKey = 'myPageVisitorCount';
+
+            // ตรวจสอบว่ามีค่า counter ใน localStorage หรือไม่
+            let count = localStorage.getItem(counterKey);
+
+            if (count === null) {
+                // ถ้ายังไม่มี (เป็นการเข้าชมครั้งแรก) ให้ตั้งค่าเป็น 1
+                count = 1;
+            } else {
+                // ถ้ามีอยู่แล้ว ให้แปลงเป็นตัวเลขแล้วบวกเพิ่ม 1
+                count = parseInt(count, 10) + 1;
+            }
+
+            // บันทึกค่าใหม่ลงใน localStorage
+            localStorage.setItem(counterKey, count);
+
+            // แสดงผลค่าใน element ที่มี id="count-value"
+            document.getElementById('count-value').textContent = count;
+        });
+    </script>
+
+</body>
+</html>
