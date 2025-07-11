@@ -208,5 +208,29 @@
 
     </main>
 
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // สร้าง key สำหรับเก็บค่าใน localStorage
+            const counterKey = 'myPageVisitorCount';
+
+            // ตรวจสอบว่ามีค่า counter ใน localStorage หรือไม่
+            let count = localStorage.getItem(counterKey);
+
+            if (count === null) {
+                // ถ้ายังไม่มี (เป็นการเข้าชมครั้งแรก) ให้ตั้งค่าเป็น 1
+                count = 1;
+            } else {
+                // ถ้ามีอยู่แล้ว ให้แปลงเป็นตัวเลขแล้วบวกเพิ่ม 1
+                count = parseInt(count, 10) + 1;
+            }
+
+            // บันทึกค่าใหม่ลงใน localStorage
+            localStorage.setItem(counterKey, count);
+
+            // แสดงผลค่าใน element ที่มี id="count-value"
+            document.getElementById('count-value').textContent = count;
+        });
+    </script>
+    
 </body>
 </html>
