@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบวางแผนล่วงหน้า</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+        }
+        /* --- Calendar Styles --- */
+        .event-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #3b82f6; /* blue-500 */
+            border-radius: 50%;
+            position: absolute;
+            bottom: 6px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .day-cell:hover {
+            border-color: #3b82f6;
+        }
+        .today {
+            background-color: #eff6ff; /* blue-50 */
+            border-color: #2563eb; /* blue-600 */
+        }
+        /* --- View Switcher Styles --- */
+        .view-switcher-btn {
+            border-bottom: 3px solid transparent;
+        }
+        .view-switcher-btn.active {
+            border-bottom-color: #3b82f6; /* blue-500 */
+            color: #3b82f6;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <div class="bg-white rounded-2xl shadow-lg p-6">
+            <!-- View Switcher -->
+            <div class="flex border-b mb-4">
+                <button id="show-calendar-btn" class="view-switcher-btn px-4 py-2 font-semibold text-gray-500 hover:text-blue-500 transition-colors active">ปฏิทิน</button>
+                <button id="show-list-btn" class="view-switcher-btn px-4 py-2 font-semibold text-gray-500 hover:text-blue-500 transition-colors">รายการทั้งหมด</button>
+            </div>
+
+            <!-- Calendar View -->
+            <div id="calendar-view">
+                <!-- Header -->
+                <div class="flex items-center justify-between mb-6">
+                    <h1 id="month-year-header" class="text-2xl md:text-3xl font-bold text-gray-700"></h1>
+                    <div class="flex items-center space-x-2">
+                        <button id="prev-month-btn" class="p-2 rounded-full hover:bg-gray-200 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                        </button>
+                        <button id="today-btn" class="px-4 py-2 text-sm font-semibold bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">วันนี้</button>
+                        <button id="next-month-btn" class="p-2 rounded-full hover:bg-gray-200 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Calendar Grid -->
+                <div id="calendar-grid" class="grid grid-cols-7 gap-1">
+                    <div class="text-center font-semibold text-gray-500 text-sm py-2">อา</div>
+                    <div class="text-center font-semibold text-gray-500 text-sm py-2">จ</div>
+                    <div class="text-center font-semibold text-gray-500 text-sm py-2">อ</div>
+                    <div class="text-center font-semibold text-gray-500 text-sm py-2">พ</div>
+                    <div class="text-center font-semibold text-gray-500 text-sm py-2">พฤ</div>
+                    <div class="text-center font-semibold text-gray-500 text-sm py-2">ศ</div>
+                    <div class="text-center font-semibold text-gray-500 text-sm py-2">ส</div>
+                </div>
+            </div>
+
+            <!-- Events List View -->
+            <div id="events-list-view" class="hidden">
+                 <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl md:text-3xl font-bold text-gray-700">รายการทั้งหมด</h2>
+                    <button id="export-csv-btn" class="px-4 py-2 text-sm font-semibold bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        ส่งออกเป็น CSV
+                    </button>
+                 </div>
+                 <div id="events-list-container" class="space-y-4">
+                     <!-- Event items will be generated by JS -->
+                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Event Modal -->
+    <div id="event-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 md:p-8 transform transition-all scale-95 opacity-0">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-bold text-gray-700">เพิ่มรายการใหม่</h2>
+                <button id="close-modal-btn" class="p-2 rounded-full hover:bg-gray-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <form id="event-form">
+                <input type="hidden" id="event-date">
+                <div class="space-y-4">
+                    <div>
+                        <label for="event-title" class="block text-sm font-medium text-gray-600 mb-1">ชื่องาน</label>
+                        <input type="text" id="event-title" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" required>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="event-time-start" class="block text-sm font-medium text-gray-600 mb-1">เวลาเริ่ม</label>
+                            <input type="time" id="event-time-start" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" required>
+                        </div>
+                         <div>
+                            <label for="event-category" class="block text-sm font-medium text-gray-600 mb-1">หมวดหมู่</label>
+                            <select id="event-category" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                <option>งาน</option>
+                                <option>ส่วนตัว</option>
+                                <option>นัดหมาย</option>
+                                <option>วันหยุด</option>
+                                <option>อื่นๆ</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="event-location" class="block text-sm font-medium text-gray-600 mb-1">สถานที่</label>
+                        <input type="text" id="event-location" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="event-description" class="block text-sm font-medium text-gray-600 mb-1">รายละเอียด</label>
+                        <textarea id="event-description" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"></textarea>
+                    </div>
+                </div>
+                <div class="mt-8 flex justify-end space-x-3">
+                    <button type="button" id="cancel-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold">ยกเลิก</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-semibold">บันทึก</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Elements ---
+            const showCalendarBtn = document.getElementById('show-calendar-btn');
+            const showListBtn = document.getElementById('show-list-btn');
+            const calendarView = document.getElementById('calendar-view');
+            const eventsListView = document.getElementById('events-list-view');
+            const eventsListContainer = document.getElementById('events-list-container');
+            const exportCsvBtn = document.getElementById('export-csv-btn');
+            
+            const monthYearHeader = document.getElementById('month-year-header');
+            const calendarGrid = document.getElementById('calendar-grid');
+            const prevMonthBtn = document.getElementById('prev-month-btn');
+            const nextMonthBtn = document.getElementById('next-month-btn');
+            const todayBtn = document.getElementById('today-btn');
+
+            const eventModal = document.getElementById('event-modal');
+            const modalContent = eventModal.querySelector('div');
+            const closeModalBtn = document.getElementById('close-modal-btn');
+            const cancelBtn = document.getElementById('cancel-btn');
+            const eventForm = document.getElementById('event-form');
+            const eventDateInput = document.getElementById('event-date');
+
+            // --- State ---
+            let currentDate = new Date();
+            let events = JSON.parse(localStorage.getItem('plannerEvents')) || {};
+
+            // --- Thai Locale ---
+            const thaiMonths = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+
+            // --- Functions ---
+            const saveEvents = () => {
+                localStorage.setItem('plannerEvents', JSON.stringify(events));
+            };
+
+            const formatDateThai = (dateStr) => {
+                const date = new Date(dateStr);
+                const day = date.getDate();
+                const month = thaiMonths[date.getMonth()];
+                const year = date.getFullYear() + 543;
+                return `วันที่ ${day} ${month} ${year}`;
+            };
+
+            const renderCalendar = () => {
+                const year = currentDate.getFullYear();
+                const month = currentDate.getMonth();
+                monthYearHeader.textContent = `${thaiMonths[month]} ${year + 543}`;
+                const dayCells = calendarGrid.querySelectorAll('.day-cell, .empty-cell');
+                dayCells.forEach(cell => cell.remove());
+                const firstDayOfMonth = new Date(year, month, 1).getDay();
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                for (let i = 0; i < firstDayOfMonth; i++) {
+                    calendarGrid.appendChild(document.createElement('div')).className = 'empty-cell p-2';
+                }
+                const today = new Date();
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const cell = document.createElement('div');
+                    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    cell.className = 'day-cell relative text-center text-sm md:text-base p-2 border border-transparent rounded-lg cursor-pointer transition-colors';
+                    cell.textContent = day;
+                    cell.dataset.date = dateStr;
+                    if (year === today.getFullYear() && month === today.getMonth() && day === today.getDate()) {
+                        cell.classList.add('today');
+                    }
+                    if (events[dateStr] && events[dateStr].length > 0) {
+                        const dot = document.createElement('div');
+                        dot.className = 'event-dot';
+                        cell.appendChild(dot);
+                    }
+                    calendarGrid.appendChild(cell);
+                }
+            };
+
+            const renderEventsList = () => {
+                eventsListContainer.innerHTML = '';
+                const allEvents = Object.entries(events)
+                    .flatMap(([date, eventArray]) => eventArray.map(event => ({ ...event, date })))
+                    .sort((a, b) => new Date(a.date) - new Date(b.date) || a.startTime.localeCompare(b.startTime));
+
+                if (allEvents.length === 0) {
+                    eventsListContainer.innerHTML = `<div class="text-center text-gray-500 py-10">ยังไม่มีรายการที่บันทึกไว้</div>`;
+                    return;
+                }
+
+                allEvents.forEach(event => {
+                    const eventEl = document.createElement('div');
+                    eventEl.className = 'bg-gray-50 p-4 rounded-lg border border-gray-200 flex items-start justify-between gap-4';
+                    eventEl.innerHTML = `
+                        <div>
+                            <p class="font-bold text-blue-600">${event.title} <span class="text-sm font-normal text-gray-500 ml-2">(${event.category})</span></p>
+                            <p class="text-sm text-gray-700 font-semibold">${formatDateThai(event.date)} เวลา ${event.startTime}</p>
+                            ${event.location ? `<p class="text-sm text-gray-500">สถานที่: ${event.location}</p>` : ''}
+                            ${event.description ? `<p class="text-sm text-gray-500 mt-1">${event.description}</p>` : ''}
+                        </div>
+                        <button class="delete-event-btn p-2 rounded-full hover:bg-red-100 text-red-500" data-id="${event.id}" data-date="${event.date}">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                    `;
+                    eventsListContainer.appendChild(eventEl);
+                });
+            };
+
+            const openModal = (date) => {
+                eventDateInput.value = date;
+                eventModal.classList.remove('hidden');
+                setTimeout(() => modalContent.classList.remove('scale-95', 'opacity-0'), 10);
+            };
+
+            const closeModal = () => {
+                modalContent.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => {
+                    eventModal.classList.add('hidden');
+                    eventForm.reset();
+                }, 200);
+            };
+            
+            const updateViews = () => {
+                renderCalendar();
+                renderEventsList();
+            };
+
+            const exportToCsv = () => {
+                const allEvents = Object.entries(events)
+                    .flatMap(([date, eventArray]) => eventArray.map(event => ({ ...event, date })))
+                    .sort((a, b) => new Date(a.date) - new Date(b.date) || a.startTime.localeCompare(b.startTime));
+
+                if (allEvents.length === 0) {
+                    alert('ไม่มีข้อมูลสำหรับส่งออก');
+                    return;
+                }
+
+                const headers = ['วันที่ (YYYY-MM-DD)', 'ชื่องาน', 'เวลาเริ่ม', 'หมวดหมู่', 'สถานที่', 'รายละเอียด'];
+                const escapeCsvField = (field) => {
+                    if (field === null || field === undefined) return '';
+                    const stringField = String(field);
+                    if (stringField.includes(',') || stringField.includes('"') || stringField.includes('\n')) {
+                        return `"${stringField.replace(/"/g, '""')}"`;
+                    }
+                    return stringField;
+                };
+
+                const csvRows = [headers.join(',')];
+                allEvents.forEach(event => {
+                    const row = [
+                        event.date,
+                        event.title,
+                        event.startTime,
+                        event.category,
+                        event.location,
+                        event.description
+                    ].map(escapeCsvField);
+                    csvRows.push(row.join(','));
+                });
+
+                const csvString = csvRows.join('\n');
+                const blob = new Blob(['\uFEFF' + csvString], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                const url = URL.createObjectURL(blob);
+
+                link.setAttribute('href', url);
+                link.setAttribute('download', 'planner_export.csv');
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            };
+
+            // --- Event Listeners ---
+            showCalendarBtn.addEventListener('click', () => {
+                calendarView.classList.remove('hidden');
+                eventsListView.classList.add('hidden');
+                showCalendarBtn.classList.add('active');
+                showListBtn.classList.remove('active');
+            });
+
+            showListBtn.addEventListener('click', () => {
+                calendarView.classList.add('hidden');
+                eventsListView.classList.remove('hidden');
+                showCalendarBtn.classList.remove('active');
+                showListBtn.classList.add('active');
+            });
+
+            exportCsvBtn.addEventListener('click', exportToCsv);
+
+            prevMonthBtn.addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); });
+            nextMonthBtn.addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); });
+            todayBtn.addEventListener('click', () => { currentDate = new Date(); renderCalendar(); });
+            calendarGrid.addEventListener('click', (e) => { if (e.target.closest('.day-cell')) openModal(e.target.closest('.day-cell').dataset.date); });
+            closeModalBtn.addEventListener('click', closeModal);
+            cancelBtn.addEventListener('click', closeModal);
+            eventModal.addEventListener('click', (e) => { if (e.target === eventModal) closeModal(); });
+
+            eventForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const date = eventDateInput.value;
+                const newEvent = {
+                    id: Date.now(),
+                    title: document.getElementById('event-title').value,
+                    startTime: document.getElementById('event-time-start').value,
+                    category: document.getElementById('event-category').value,
+                    location: document.getElementById('event-location').value,
+                    description: document.getElementById('event-description').value,
+                };
+                if (!events[date]) events[date] = [];
+                events[date].push(newEvent);
+                saveEvents();
+                updateViews();
+                closeModal();
+            });
+
+            eventsListContainer.addEventListener('click', (e) => {
+                const deleteBtn = e.target.closest('.delete-event-btn');
+                if (deleteBtn) {
+                    const eventId = parseInt(deleteBtn.dataset.id);
+                    const eventDate = deleteBtn.dataset.date;
+                    events[eventDate] = events[eventDate].filter(event => event.id !== eventId);
+                    if (events[eventDate].length === 0) {
+                        delete events[eventDate];
+                    }
+                    saveEvents();
+                    updateViews();
+                }
+            });
+
+            // --- Initial Load ---
+            updateViews();
+        });
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>แอปคำนวณเงินเดือนพนักงาน</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Google Fonts (Kanit) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <style>
+        body {
+            font-family: 'Kanit', sans-serif;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 800px;
+        }
+        .card-header {
+            background-color: #0d6efd;
+            color: white;
+            font-weight: 500;
+        }
+        .result-card {
+            background-color: #e9f5ff;
+            border-left: 5px solid #0d6efd;
+        }
+        .net-salary {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #198754;
+        }
+        .form-text {
+            font-size: 0.8rem;
+        }
+        label {
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container my-5">
+        <div class="text-center mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" class="bi bi-calculator-fill mb-2" viewBox="0 0 16 16">
+                <path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2zm2 .5v2a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 .5-.5v-2a.5.5 0 0 0-.5-.5h-7a.5.5 0 0 0-.5.5m0 4a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5zM4.5 9a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5zM4 12.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5M7.5 6a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5zM7 9.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5m.5 2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5zM10.5 6a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5zM10 9.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5m.5 2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5zM13.5 6a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5zm-1.5 3.5a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5zm.5 2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5z"/>
+            </svg>
+            <h1 class="h3">แอปคำนวณเงินเดือนพนักงาน</h1>
+            <p class="lead text-muted">กรอกข้อมูลรายรับและรายการหักเพื่อคำนวณเงินเดือนสุทธิ</p>
+        </div>
+
+        <form id="payroll-form">
+            <!-- Employee Information Card -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    ข้อมูลพนักงาน
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="employeeName" class="form-label">ชื่อ-สกุล พนักงาน</label>
+                            <input type="text" class="form-control" id="employeeName" placeholder="เช่น สมชาย ใจดี">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="employeeId" class="form-label">รหัสพนักงาน</label>
+                            <input type="text" class="form-control" id="employeeId" placeholder="เช่น EMP001">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Income Card -->
+                <div class="col-md-6">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            รายรับ (Income)
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="baseSalary" class="form-label">เงินเดือนพื้นฐาน (บาท)</label>
+                                <input type="number" class="form-control" id="baseSalary" placeholder="0" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="overtime" class="form-label">ค่าล่วงเวลา (OT) (บาท)</label>
+                                <input type="number" class="form-control" id="overtime" placeholder="0">
+                            </div>
+                            <div class="mb-3">
+                                <label for="bonus" class="form-label">โบนัส (บาท)</label>
+                                <input type="number" class="form-control" id="bonus" placeholder="0">
+                            </div>
+                            <div class="mb-3">
+                                <label for="commission" class="form-label">ค่าคอมมิชชั่น (บาท)</label>
+                                <input type="number" class="form-control" id="commission" placeholder="0">
+                            </div>
+                            <div class="mb-3">
+                                <label for="otherIncome" class="form-label">รายรับอื่นๆ (บาท)</label>
+                                <input type="number" class="form-control" id="otherIncome" placeholder="0">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Deductions Card -->
+                <div class="col-md-6">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            รายการหัก (Deductions)
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="providentFund" class="form-label">กองทุนสำรองเลี้ยงชีพ (%)</label>
+                                <input type="number" class="form-control" id="providentFund" placeholder="เช่น 3, 5">
+                                <div class="form-text">คำนวณจากเงินเดือนพื้นฐาน</div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="otherTaxDeductions" class="form-label">ค่าลดหย่อนภาษีอื่นๆ (ต่อปี)</label>
+                                <input type="number" class="form-control" id="otherTaxDeductions" placeholder="0">
+                                <div class="form-text">เช่น ค่าลดหย่อนบุตร, เบี้ยประกัน, ดอกเบี้ยบ้าน</div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="otherDeductions" class="form-label">รายการหักอื่นๆ (บาท)</label>
+                                <input type="number" class="form-control" id="otherDeductions" placeholder="0">
+                                <div class="form-text">เช่น หักขาดลามาสาย, เงินกู้บริษัท</div>
+                            </div>
+                            <hr>
+                            <p class="fw-bold">รายการหักอัตโนมัติ:</p>
+                            <ul class="list-unstyled">
+                                <li><span class="badge bg-secondary">ประกันสังคม</span> (5% สูงสุด 750 บ.)</li>
+                                <li><span class="badge bg-secondary">ภาษีหัก ณ ที่จ่าย</span> (คำนวณตามขั้นบันได)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="text-center mb-4">
+                <button type="submit" class="btn btn-primary btn-lg px-5">คำนวณเงินเดือน</button>
+                <button type="button" id="clear-button" class="btn btn-outline-danger btn-lg px-5">ล้างข้อมูล</button>
+            </div>
+        </form>
+        
+        <!-- Result Summary -->
+        <div id="result-summary" class="d-none">
+            <h3 class="text-center mb-3">สรุปผลการคำนวณ</h3>
+            <div class="card result-card">
+                <div class="card-body">
+                    <div id="result-content"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // Helper function to format numbers with commas
+        function formatNumber(num) {
+            return num.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        // Function to calculate Social Security deduction
+        function calculateSocialSecurity(salary) {
+            const rate = 0.05;
+            const maxDeduction = 750;
+            // Social Security is calculated on a salary base between 1,650 and 15,000 THB
+            const effectiveSalary = Math.max(1650, Math.min(salary, 15000));
+            const deduction = effectiveSalary * rate;
+            return Math.min(deduction, maxDeduction);
+        }
+
+        // Function to calculate Withholding Tax
+        function calculateWithholdingTax(totalIncome, otherTaxAllowances) {
+            const annualIncome = totalIncome * 12;
+            
+            // Standard deductions in Thailand
+            const personalAllowance = 60000;
+            const socialSecurityDeduction = calculateSocialSecurity(totalIncome) * 12; // Annual social security
+            const standardExpense = Math.min(annualIncome * 0.5, 100000);
+
+            const totalAllowances = personalAllowance + standardExpense + socialSecurityDeduction + otherTaxAllowances;
+            
+            let netTaxableIncome = annualIncome - totalAllowances;
+            if (netTaxableIncome <= 0) {
+                return 0;
+            }
+
+            let annualTax = 0;
+
+            // Progressive Tax Rates for 2024
+            if (netTaxableIncome > 5000000) {
+                annualTax += (netTaxableIncome - 5000000) * 0.35;
+                netTaxableIncome = 5000000;
+            }
+            if (netTaxableIncome > 2000000) {
+                annualTax += (netTaxableIncome - 2000000) * 0.30;
+                netTaxableIncome = 2000000;
+            }
+            if (netTaxableIncome > 1000000) {
+                annualTax += (netTaxableIncome - 1000000) * 0.25;
+                netTaxableIncome = 1000000;
+            }
+            if (netTaxableIncome > 750000) {
+                annualTax += (netTaxableIncome - 750000) * 0.20;
+                netTaxableIncome = 750000;
+            }
+            if (netTaxableIncome > 500000) {
+                annualTax += (netTaxableIncome - 500000) * 0.15;
+                netTaxableIncome = 500000;
+            }
+            if (netTaxableIncome > 300000) {
+                annualTax += (netTaxableIncome - 300000) * 0.10;
+                netTaxableIncome = 300000;
+            }
+            if (netTaxableIncome > 150000) {
+                annualTax += (netTaxableIncome - 150000) * 0.05;
+            }
+            // 0-150,000 is exempted
+
+            return annualTax / 12;
+        }
+
+        // Main form submission handler
+        document.getElementById('payroll-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            // --- Get Input Values ---
+            // Use parseFloat and fallback to 0 if input is empty or invalid
+            const baseSalary = parseFloat(document.getElementById('baseSalary').value) || 0;
+            const overtime = parseFloat(document.getElementById('overtime').value) || 0;
+            const bonus = parseFloat(document.getElementById('bonus').value) || 0;
+            const commission = parseFloat(document.getElementById('commission').value) || 0;
+            const otherIncome = parseFloat(document.getElementById('otherIncome').value) || 0;
+            
+            const providentFundRate = parseFloat(document.getElementById('providentFund').value) || 0;
+            const otherTaxDeductions = parseFloat(document.getElementById('otherTaxDeductions').value) || 0;
+            const otherDeductions = parseFloat(document.getElementById('otherDeductions').value) || 0;
+            
+            const employeeName = document.getElementById('employeeName').value || 'N/A';
+            const employeeId = document.getElementById('employeeId').value || 'N/A';
+
+            // --- Calculations ---
+            // 1. Total Income
+            const totalIncome = baseSalary + overtime + bonus + commission + otherIncome;
+
+            // 2. Deductions
+            const socialSecurity = calculateSocialSecurity(baseSalary);
+            const providentFund = (baseSalary * providentFundRate) / 100;
+            // Pass total income (not just base salary) for tax calculation as per regulations
+            const withholdingTax = calculateWithholdingTax(totalIncome, otherTaxDeductions + providentFund * 12);
+
+            const totalDeductions = socialSecurity + withholdingTax + providentFund + otherDeductions;
+
+            // 3. Net Salary
+            const netSalary = totalIncome - totalDeductions;
+
+            // --- Display Results ---
+            const resultContent = document.getElementById('result-content');
+            resultContent.innerHTML = `
+                <p class="mb-2"><strong>พนักงาน:</strong> ${employeeName} (ID: ${employeeId})</p>
+                <hr>
+                <div class="row">
+                    <div class="col-6">
+                        <p class="mb-1"><strong>รายรับรวม:</strong></p>
+                        <p class="mb-1 text-muted ps-3">เงินเดือน: ${formatNumber(baseSalary)}</p>
+                        <p class="mb-1 text-muted ps-3">รายได้อื่นๆ: ${formatNumber(overtime + bonus + commission + otherIncome)}</p>
+                        <p class="mb-2 fw-bold text-success">+ ${formatNumber(totalIncome)} บาท</p>
+                    </div>
+                    <div class="col-6">
+                        <p class="mb-1"><strong>รายการหักรวม:</strong></p>
+                        <p class="mb-1 text-muted ps-3">ประกันสังคม: ${formatNumber(socialSecurity)}</p>
+                        <p class="mb-1 text-muted ps-3">ภาษีหัก ณ ที่จ่าย: ${formatNumber(withholdingTax)}</p>
+                        <p class="mb-1 text-muted ps-3">กองทุนฯ (${providentFundRate}%): ${formatNumber(providentFund)}</p>
+                        <p class="mb-1 text-muted ps-3">หักอื่นๆ: ${formatNumber(otherDeductions)}</p>
+                        <p class="mb-2 fw-bold text-danger">- ${formatNumber(totalDeductions)} บาท</p>
+                    </div>
+                </div>
+                <hr>
+                <div class="text-center mt-3">
+                    <h4>เงินเดือนสุทธิ (Net Salary)</h4>
+                    <p class="net-salary">${formatNumber(netSalary)} บาท</p>
+                </div>
+            `;
+
+            const resultSummary = document.getElementById('result-summary');
+            resultSummary.classList.remove('d-none');
+            resultSummary.scrollIntoView({ behavior: 'smooth' });
+        });
+
+        // Clear button handler
+        document.getElementById('clear-button').addEventListener('click', function() {
+            document.getElementById('payroll-form').reset();
+            document.getElementById('result-summary').classList.add('d-none');
+        });
+
+    </script>
+</body>
+</html>

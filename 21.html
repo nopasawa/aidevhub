@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบเบิกจ่ายวัสดุ</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Google Fonts (Kanit) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        body {
+            font-family: 'Kanit', sans-serif;
+            background-color: #f0f2f5;
+        }
+        .main-container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 1rem;
+        }
+        .login-container {
+            max-width: 450px;
+            margin-top: 5rem;
+        }
+        .card {
+            border: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border-radius: 12px;
+        }
+        .btn-primary {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+        }
+        .view {
+            display: none; /* Hide all views by default */
+        }
+        #app-view {
+            display: none; /* App view is hidden initially */
+        }
+        .nav-pills .nav-link.active {
+            background-color: #0d6efd;
+        }
+        .nav-pills .nav-link {
+            color: #495057;
+        }
+        .table-responsive {
+            max-height: 400px;
+        }
+        /* Loading Spinner */
+        #loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.7);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Loading Spinner -->
+    <div id="loader" style="display: none;">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">กำลังโหลด...</span>
+        </div>
+    </div>
+
+    <!-- Alert Message Placeholder -->
+    <div id="alert-placeholder" class="position-fixed top-0 end-0 p-3" style="z-index: 1100"></div>
+
+    <!-- Login View -->
+    <div id="login-view" class="container login-container view">
+        <div class="card p-4">
+            <div class="card-body">
+                <h3 class="text-center mb-4">เข้าสู่ระบบเบิกจ่ายวัสดุ</h3>
+                <form id="login-form">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">ชื่อผู้ใช้</label>
+                        <input type="text" class="form-control" id="username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">รหัสผ่าน</label>
+                        <input type="password" class="form-control" id="password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">เข้าสู่ระบบ</button>
+                </form>
+                <div class="text-center mt-3">
+                    <a href="#" id="show-register-link">ยังไม่มีบัญชี? สมัครสมาชิก</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Register View -->
+    <div id="register-view" class="container login-container view">
+        <div class="card p-4">
+            <div class="card-body">
+                <h3 class="text-center mb-4">สมัครสมาชิก</h3>
+                <form id="register-form">
+                    <div class="mb-3">
+                        <label for="reg-fullname" class="form-label">ชื่อ-นามสกุล</label>
+                        <input type="text" class="form-control" id="reg-fullname" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="reg-username" class="form-label">ชื่อผู้ใช้ (สำหรับ Login)</label>
+                        <input type="text" class="form-control" id="reg-username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="reg-password" class="form-label">รหัสผ่าน</label>
+                        <input type="password" class="form-control" id="reg-password" required>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">ลงทะเบียน</button>
+                </form>
+                <div class="text-center mt-3">
+                    <a href="#" id="show-login-link">มีบัญชีแล้ว? เข้าสู่ระบบ</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application View -->
+    <div id="app-view" class="container main-container view">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4><i class="fas fa-boxes-stacked"></i> ระบบเบิกจ่ายวัสดุ</h4>
+            <div>
+                <span id="user-display" class="me-3"></span>
+                <button id="logout-btn" class="btn btn-outline-danger btn-sm">ออกจากระบบ</button>
+            </div>
+        </div>
+
+        <!-- User Section -->
+        <div id="user-section">
+            <div class="row">
+                <!-- Requisition Form -->
+                <div class="col-md-5">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-edit"></i> สร้างใบเบิกวัสดุ</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="requisition-form">
+                                <div class="mb-3">
+                                    <label for="material-select" class="form-label">เลือกวัสดุ</label>
+                                    <select class="form-select" id="material-select" required>
+                                        <option value="">กรุณาเลือกวัสดุ...</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="quantity" class="form-label">จำนวน</label>
+                                    <input type="number" class="form-control" id="quantity" min="1" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-100">ส่งใบเบิก</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <!-- Requisition History -->
+                <div class="col-md-7">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-history"></i> ประวัติการเบิกของคุณ</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>วันที่</th>
+                                            <th>วัสดุ</th>
+                                            <th>จำนวน</th>
+                                            <th>สถานะ</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="user-history-table">
+                                        <!-- Data will be populated by JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Section -->
+        <div id="admin-section" class="mt-4" style="display: none;">
+            <div class="card">
+                <div class="card-header">
+                    <ul class="nav nav-pills card-header-pills" id="admin-tabs">
+                        <li class="nav-item">
+                            <a class="nav-link active" data-bs-toggle="pill" href="#reports-panel"><i class="fas fa-chart-line"></i> รายงาน</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="pill" href="#materials-panel"><i class="fas fa-box"></i> จัดการสต็อกวัสดุ</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="pill" href="#users-panel"><i class="fas fa-users"></i> จัดการผู้ใช้งาน</a>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-body">
+                    <div class="tab-content">
+                        <!-- Reports Panel -->
+                        <div class="tab-pane fade show active" id="reports-panel">
+                            <h5>ดูรายงานการเบิก</h5>
+                            <div class="d-flex gap-2 mb-3">
+                                <input type="date" id="report-date" class="form-control" value="">
+                                <button id="report-daily-btn" class="btn btn-info">รายวัน</button>
+                                <button id="report-monthly-btn" class="btn btn-info">รายเดือน</button>
+                                <button id="report-yearly-btn" class="btn btn-info">รายปี</button>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>วันที่</th>
+                                            <th>ผู้เบิก</th>
+                                            <th>วัสดุ</th>
+                                            <th>จำนวน</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="report-table-body">
+                                        <!-- Report data here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <!-- Materials Panel -->
+                        <div class="tab-pane fade" id="materials-panel">
+                             <div class="row">
+                                <div class="col-md-8">
+                                    <h5>รายการวัสดุในสต็อก</h5>
+                                    <div class="table-responsive">
+                                        <table class="table">
+                                            <thead>
+                                                <tr>
+                                                    <th>ชื่อวัสดุ</th>
+                                                    <th>จำนวนคงเหลือ</th>
+                                                    <th>การกระทำ</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="stock-table-body">
+                                                <!-- Stock data here -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <h5>เพิ่ม/แก้ไข วัสดุ</h5>
+                                    <form id="material-form">
+                                        <input type="hidden" id="material-id">
+                                        <div class="mb-3">
+                                            <label for="material-name" class="form-label">ชื่อวัสดุ</label>
+                                            <input type="text" class="form-control" id="material-name" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="material-quantity" class="form-label">จำนวน</label>
+                                            <input type="number" class="form-control" id="material-quantity" min="0" required>
+                                        </div>
+                                        <button type="submit" class="btn btn-success">บันทึก</button>
+                                        <button type="button" id="clear-material-form" class="btn btn-secondary">ล้างฟอร์ม</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Users Panel -->
+                        <div class="tab-pane fade" id="users-panel">
+                            <h5>รายชื่อผู้ใช้งานในระบบ</h5>
+                             <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>ชื่อ-นามสกุล</th>
+                                            <th>ชื่อผู้ใช้</th>
+                                            <th>บทบาท</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="users-table-body">
+                                        <!-- User data here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+    // ===================================================================================
+    // !!! สำคัญมาก !!!
+    // ให้คุณนำ URL ที่ได้จากการ Deploy Google Apps Script มาวางที่นี่
+    // This is the most important part. Paste your deployed Google Apps Script URL here.
+    // ===================================================================================
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwb__jGNL9KImSEmveckqDaWP2HFoQdKx-J7rxsKJ5w0AfctyobjEMJZvemA3My-mQn_A/exec";
+
+    // --- DOM Elements ---
+    const loader = document.getElementById('loader');
+    const alertPlaceholder = document.getElementById('alert-placeholder');
+    
+    const loginView = document.getElementById('login-view');
+    const registerView = document.getElementById('register-view');
+    const appView = document.getElementById('app-view');
+
+    const loginForm = document.getElementById('login-form');
+    const registerForm = document.getElementById('register-form');
+    
+    const showRegisterLink = document.getElementById('show-register-link');
+    const showLoginLink = document.getElementById('show-login-link');
+    const logoutBtn = document.getElementById('logout-btn');
+
+    const userDisplay = document.getElementById('user-display');
+    const userSection = document.getElementById('user-section');
+    const adminSection = document.getElementById('admin-section');
+
+    const requisitionForm = document.getElementById('requisition-form');
+    const materialSelect = document.getElementById('material-select');
+    const userHistoryTable = document.getElementById('user-history-table');
+
+    const adminTabs = document.getElementById('admin-tabs');
+    const reportTableBody = document.getElementById('report-table-body');
+    const stockTableBody = document.getElementById('stock-table-body');
+    const usersTableBody = document.getElementById('users-table-body');
+    const materialForm = document.getElementById('material-form');
+
+    // --- State ---
+    let currentUser = null;
+
+    // --- Utility Functions ---
+    const showLoader = (show) => {
+        loader.style.display = show ? 'flex' : 'none';
+    };
+
+    const showAlert = (message, type = 'success') => {
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+        alertPlaceholder.append(wrapper);
+        setTimeout(() => wrapper.remove(), 5000);
+    };
+
+    const switchView = (viewId) => {
+        document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
+        document.getElementById(viewId).style.display = 'block';
+    };
+
+    // --- API Call Function ---
+    async function callApi(action, payload = {}) {
+        if (SCRIPT_URL === "YOUR_GOOGLE_APPS_SCRIPT_URL_HERE") {
+            showAlert("กรุณาตั้งค่า URL ของ Google Apps Script ในไฟล์โค้ดก่อน", "danger");
+            return { success: false, message: "Script URL not configured." };
+        }
+        showLoader(true);
+        try {
+            const response = await fetch(SCRIPT_URL, {
+                method: 'POST',
+                mode: 'cors',
+                headers: {
+                    'Content-Type': 'text/plain;charset=utf-8', // Apps Script web apps often work best with text/plain
+                },
+                body: JSON.stringify({ action, ...payload })
+            });
+            const result = await response.json();
+            if (!result.success) {
+                showAlert(result.message || 'เกิดข้อผิดพลาด', 'danger');
+            }
+            return result;
+        } catch (error) {
+            console.error('API Call Error:', error);
+            showAlert('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้', 'danger');
+            return { success: false, message: error.message };
+        } finally {
+            showLoader(false);
+        }
+    }
+
+    // --- Application Logic ---
+    const handleLogin = async (e) => {
+        e.preventDefault();
+        const username = loginForm.querySelector('#username').value;
+        const password = loginForm.querySelector('#password').value;
+        
+        const result = await callApi('login', { username, password });
+        if (result.success) {
+            currentUser = result.user;
+            sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+            initializeApp();
+        }
+    };
+
+    const handleRegister = async (e) => {
+        e.preventDefault();
+        const fullName = registerForm.querySelector('#reg-fullname').value;
+        const username = registerForm.querySelector('#reg-username').value;
+        const password = registerForm.querySelector('#reg-password').value;
+
+        const result = await callApi('register', { fullName, username, password });
+        if (result.success) {
+            showAlert('สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ', 'success');
+            switchView('login-view');
+            registerForm.reset();
+        }
+    };
+
+    const handleLogout = () => {
+        currentUser = null;
+        sessionStorage.removeItem('currentUser');
+        switchView('login-view');
+        appView.style.display = 'none';
+    };
+    
+    const initializeApp = () => {
+        if (!currentUser) return;
+        userDisplay.textContent = `สวัสดี, ${currentUser.fullName} (${currentUser.role})`;
+        
+        if (currentUser.role === 'admin') {
+            adminSection.style.display = 'block';
+            loadAdminData();
+        } else {
+            adminSection.style.display = 'none';
+        }
+        
+        loadUserData();
+        switchView('app-view');
+        appView.style.display = 'block';
+    };
+
+    const loadUserData = async () => {
+        const result = await callApi('getUserData', { username: currentUser.username });
+        if (result.success) {
+            // Populate materials dropdown
+            materialSelect.innerHTML = '<option value="">กรุณาเลือกวัสดุ...</option>';
+            result.materials.forEach(mat => {
+                const option = document.createElement('option');
+                option.value = mat.name;
+                option.textContent = `${mat.name} (คงเหลือ: ${mat.quantity})`;
+                materialSelect.appendChild(option);
+            });
+
+            // Populate user history
+            userHistoryTable.innerHTML = '';
+            result.history.forEach(item => {
+                const row = userHistoryTable.insertRow();
+                row.innerHTML = `
+                    <td>${new Date(item.timestamp).toLocaleDateString('th-TH')}</td>
+                    <td>${item.material}</td>
+                    <td>${item.quantity}</td>
+                    <td><span class="badge bg-success">สำเร็จ</span></td>
+                `;
+            });
+        }
+    };
+    
+    const loadAdminData = () => {
+        loadStockData();
+        loadUsersData();
+        // Reports are loaded on demand
+    };
+
+    const loadStockData = async () => {
+        const result = await callApi('getMaterials');
+        if (result.success) {
+            stockTableBody.innerHTML = '';
+            result.data.forEach(item => {
+                const row = stockTableBody.insertRow();
+                row.innerHTML = `
+                    <td>${item.name}</td>
+                    <td>${item.quantity}</td>
+                    <td>
+                        <button class="btn btn-sm btn-warning" onclick="editMaterial('${item.id}', '${item.name}', '${item.quantity}')"><i class="fas fa-pen"></i></button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteMaterial('${item.id}')"><i class="fas fa-trash"></i></button>
+                    </td>
+                `;
+            });
+        }
+    };
+    
+    const loadUsersData = async () => {
+        const result = await callApi('getUsers');
+        if (result.success) {
+            usersTableBody.innerHTML = '';
+            result.data.forEach(user => {
+                const row = usersTableBody.insertRow();
+                row.innerHTML = `
+                    <td>${user.fullName}</td>
+                    <td>${user.username}</td>
+                    <td><span class="badge bg-${user.role === 'admin' ? 'primary' : 'secondary'}">${user.role}</span></td>
+                `;
+            });
+        }
+    };
+
+    const handleRequisitionSubmit = async (e) => {
+        e.preventDefault();
+        const material = materialSelect.value;
+        const quantity = document.getElementById('quantity').value;
+
+        if (!material || !quantity) {
+            showAlert('กรุณากรอกข้อมูลให้ครบถ้วน', 'warning');
+            return;
+        }
+
+        const result = await callApi('submitRequisition', {
+            username: currentUser.username,
+            fullName: currentUser.fullName,
+            material,
+            quantity
+        });
+
+        if (result.success) {
+            showAlert('ส่งใบเบิกสำเร็จ!', 'success');
+            requisitionForm.reset();
+            loadUserData(); // Refresh user data
+            if(currentUser.role === 'admin') loadStockData(); // Refresh stock if admin
+        }
+    };
+    
+    const handleMaterialFormSubmit = async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('material-id').value;
+        const name = document.getElementById('material-name').value;
+        const quantity = document.getElementById('material-quantity').value;
+        
+        const action = id ? 'updateMaterial' : 'addMaterial';
+        const payload = { id, name, quantity };
+        
+        const result = await callApi(action, payload);
+        if (result.success) {
+            showAlert(`บันทึกข้อมูลวัสดุสำเร็จ`, 'success');
+            materialForm.reset();
+            document.getElementById('material-id').value = '';
+            loadStockData();
+            loadUserData(); // Refresh dropdown for all users
+        }
+    };
+
+    window.editMaterial = (id, name, quantity) => {
+        document.getElementById('material-id').value = id;
+        document.getElementById('material-name').value = name;
+        document.getElementById('material-quantity').value = quantity;
+    };
+    
+    window.deleteMaterial = async (id) => {
+        if (confirm('คุณแน่ใจหรือไม่ที่จะลบวัสดุนี้?')) {
+            const result = await callApi('deleteMaterial', { id });
+            if (result.success) {
+                showAlert('ลบวัสดุสำเร็จ', 'success');
+                loadStockData();
+                loadUserData();
+            }
+        }
+    };
+    
+    document.getElementById('clear-material-form').addEventListener('click', () => {
+        materialForm.reset();
+        document.getElementById('material-id').value = '';
+    });
+
+    const handleReportGeneration = async (type) => {
+        const dateInput = document.getElementById('report-date').value;
+        if (!dateInput) {
+            showAlert('กรุณาเลือกวันที่สำหรับทำรายงาน', 'warning');
+            return;
+        }
+        const result = await callApi('getReport', { type, date: dateInput });
+        if (result.success) {
+            reportTableBody.innerHTML = '';
+            if (result.data.length === 0) {
+                reportTableBody.innerHTML = '<tr><td colspan="4" class="text-center">ไม่พบข้อมูล</td></tr>';
+                return;
+            }
+            result.data.forEach(item => {
+                const row = reportTableBody.insertRow();
+                row.innerHTML = `
+                    <td>${new Date(item.timestamp).toLocaleString('th-TH')}</td>
+                    <td>${item.fullName}</td>
+                    <td>${item.material}</td>
+                    <td>${item.quantity}</td>
+                `;
+            });
+        }
+    };
+
+    // --- Event Listeners ---
+    document.addEventListener('DOMContentLoaded', () => {
+        // Check for saved session
+        const savedUser = sessionStorage.getItem('currentUser');
+        if (savedUser) {
+            currentUser = JSON.parse(savedUser);
+            initializeApp();
+        } else {
+            switchView('login-view');
+        }
+        
+        // Set default date for report
+        document.getElementById('report-date').valueAsDate = new Date();
+    });
+
+    loginForm.addEventListener('submit', handleLogin);
+    registerForm.addEventListener('submit', handleRegister);
+    logoutBtn.addEventListener('click', handleLogout);
+
+    showRegisterLink.addEventListener('click', (e) => { e.preventDefault(); switchView('register-view'); });
+    showLoginLink.addEventListener('click', (e) => { e.preventDefault(); switchView('login-view'); });
+    
+    requisitionForm.addEventListener('submit', handleRequisitionSubmit);
+    materialForm.addEventListener('submit', handleMaterialFormSubmit);
+    
+    document.getElementById('report-daily-btn').addEventListener('click', () => handleReportGeneration('daily'));
+    document.getElementById('report-monthly-btn').addEventListener('click', () => handleReportGeneration('monthly'));
+    document.getElementById('report-yearly-btn').addEventListener('click', () => handleReportGeneration('yearly'));
+
+    // Handle admin tab clicks to refresh data
+    adminTabs.addEventListener('show.bs.tab', async (event) => {
+        const targetId = event.target.getAttribute('href');
+        if (targetId === '#materials-panel') {
+            await loadStockData();
+        } else if (targetId === '#users-panel') {
+            await loadUsersData();
+        }
+    });
+
+    </script>
+    
+    <!-- 
+    ===================================================================================
+    คำแนะนำในการติดตั้ง Google Apps Script (ส่วนหลังบ้าน)
+    ===================================================================================
+
+    1.  ไปที่ Google Sheets (https://sheets.google.com) และสร้างไฟล์ใหม่
+    2.  ตั้งชื่อชีต 3 ชีตข้างล่าง:
+        -   Users (คอลัมน์: FullName, Username, Password, Role)
+        -   Materials (คอลัมน์: ID, Name, Quantity)
+        -   Requisitions (คอลัมน์: Timestamp, FullName, Username, Material, Quantity)
+    3.  ไปที่ "ส่วนขยาย" (Extensions) > "Apps Script"
+    4.  ลบโค้ดที่มีอยู่ทั้งหมดและวางโค้ด JavaScript ที่จะให้ไว้ด้านล่างนี้แทน
+    5.  กด "บันทึกโปรเจกต์"
+    6.  กด "ทำให้ใช้งานได้" (Deploy) > "การทำให้ใช้งานได้รายการใหม่" (New deployment)
+    7.  เลือกประเภทเป็น "เว็บแอป" (Web app)
+    8.  ในช่อง "ใครมีสิทธิ์เข้าถึง" (Who has access) ให้เลือกเป็น "ทุกคน" (Anyone)
+    9.  กด "ทำให้ใช้งานได้" (Deploy) และให้สิทธิ์ (Authorize access) ตามที่ระบบร้องขอ
+    10. คัดลอก "URL ของเว็บแอป" ที่ได้มา และนำไปวางในตัวแปร `SCRIPT_URL` ในโค้ด HTML ด้านบน
+    
+    -----------------------------------------------------------------------------------
+    โค้ดสำหรับ Google Apps Script (ไฟล์ Code.gs)
+    -----------------------------------------------------------------------------------
+    
+    function doPost(e) {
+      try {
+        const data = JSON.parse(e.postData.contents);
+        const action = data.action;
+        
+        const userSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Users");
+        const materialSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Materials");
+        const requisitionSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Requisitions");
+
+        let response;
+
+        switch(action) {
+          case 'login':
+            response = handleLogin(data, userSheet);
+            break;
+          case 'register':
+            response = handleRegister(data, userSheet);
+            break;
+          case 'getUserData':
+            response = handleGetUserData(data, materialSheet, requisitionSheet);
+            break;
+          case 'submitRequisition':
+            response = handleSubmitRequisition(data, materialSheet, requisitionSheet);
+            break;
+          case 'getMaterials':
+            response = handleGetMaterials(materialSheet);
+            break;
+          case 'addMaterial':
+            response = handleAddMaterial(data, materialSheet);
+            break;
+          case 'updateMaterial':
+            response = handleUpdateMaterial(data, materialSheet);
+            break;
+          case 'deleteMaterial':
+            response = handleDeleteMaterial(data, materialSheet);
+            break;
+          case 'getUsers':
+            response = handleGetUsers(userSheet);
+            break;
+          case 'getReport':
+            response = handleGetReport(data, requisitionSheet);
+            break;
+          default:
+            response = { success: false, message: 'Invalid action' };
+        }
+        
+        return ContentService.createTextOutput(JSON.stringify(response))
+          .setMimeType(ContentService.MimeType.JSON);
+
+      } catch (error) {
+        return ContentService.createTextOutput(JSON.stringify({ success: false, message: error.toString() }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+    }
+
+    // --- Action Handlers ---
+
+    function handleLogin(data, sheet) {
+      const users = sheet.getDataRange().getValues();
+      // Start from 1 to skip header
+      for (let i = 1; i < users.length; i++) {
+        if (users[i][1] === data.username && users[i][2] === data.password) { // In a real app, use hashed passwords!
+          return { 
+            success: true, 
+            user: { 
+              fullName: users[i][0], 
+              username: users[i][1], 
+              role: users[i][3] 
+            }
+          };
+        }
+      }
+      return { success: false, message: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' };
+    }
+
+    function handleRegister(data, sheet) {
+      const users = sheet.getDataRange().getValues();
+      for (let i = 1; i < users.length; i++) {
+        if (users[i][1] === data.username) {
+          return { success: false, message: 'ชื่อผู้ใช้นี้มีอยู่แล้ว' };
+        }
+      }
+      sheet.appendRow([data.fullName, data.username, data.password, 'user']); // Default role is 'user'
+      return { success: true };
+    }
+    
+    function handleGetUserData(data, materialSheet, requisitionSheet) {
+        const materials = getSheetData(materialSheet);
+        const allHistory = getSheetData(requisitionSheet);
+        const userHistory = allHistory.filter(h => h.username === data.username);
+        return { success: true, materials: materials, history: userHistory };
+    }
+
+    function handleSubmitRequisition(data, materialSheet, requisitionSheet) {
+      requisitionSheet.appendRow([new Date(), data.fullName, data.username, data.material, data.quantity]);
+      
+      // Update stock
+      const materials = materialSheet.getDataRange().getValues();
+      for (let i = 1; i < materials.length; i++) {
+        if (materials[i][1] === data.material) {
+          let currentQuantity = parseInt(materials[i][2]);
+          if (currentQuantity >= data.quantity) {
+            materialSheet.getRange(i + 1, 3).setValue(currentQuantity - data.quantity);
+            return { success: true };
+          } else {
+            return { success: false, message: 'วัสดุไม่เพียงพอ' };
+          }
+        }
+      }
+      return { success: false, message: 'ไม่พบวัสดุ' };
+    }
+
+    function handleGetMaterials(sheet) {
+      return { success: true, data: getSheetData(sheet) };
+    }
+    
+    function handleAddMaterial(data, sheet) {
+      const newId = Utilities.getUuid();
+      sheet.appendRow([newId, data.name, data.quantity]);
+      return { success: true };
+    }
+
+    function handleUpdateMaterial(data, sheet) {
+      const materials = sheet.getDataRange().getValues();
+      for (let i = 1; i < materials.length; i++) {
+        if (materials[i][0] === data.id) {
+          sheet.getRange(i + 1, 2).setValue(data.name);
+          sheet.getRange(i + 1, 3).setValue(data.quantity);
+          return { success: true };
+        }
+      }
+      return { success: false, message: 'ไม่พบ ID วัสดุ' };
+    }
+
+    function handleDeleteMaterial(data, sheet) {
+      const materials = sheet.getDataRange().getValues();
+      for (let i = 1; i < materials.length; i++) {
+        if (materials[i][0] === data.id) {
+          sheet.deleteRow(i + 1);
+          return { success: true };
+        }
+      }
+      return { success: false, message: 'ไม่พบ ID วัสดุ' };
+    }
+
+    function handleGetUsers(sheet) {
+      const users = getSheetData(sheet);
+      // Remove password from the data sent to client
+      const safeUsers = users.map(({password, ...rest}) => rest);
+      return { success: true, data: safeUsers };
+    }
+
+    function handleGetReport(data, sheet) {
+      const reportDate = new Date(data.date);
+      const allData = getSheetData(sheet);
+      let filteredData = [];
+
+      if (data.type === 'daily') {
+        filteredData = allData.filter(row => {
+          const rowDate = new Date(row.timestamp);
+          return rowDate.getFullYear() === reportDate.getFullYear() &&
+                 rowDate.getMonth() === reportDate.getMonth() &&
+                 rowDate.getDate() === reportDate.getDate();
+        });
+      } else if (data.type === 'monthly') {
+        filteredData = allData.filter(row => {
+          const rowDate = new Date(row.timestamp);
+          return rowDate.getFullYear() === reportDate.getFullYear() &&
+                 rowDate.getMonth() === reportDate.getMonth();
+        });
+      } else if (data.type === 'yearly') {
+        filteredData = allData.filter(row => {
+          const rowDate = new Date(row.timestamp);
+          return rowDate.getFullYear() === reportDate.getFullYear();
+        });
+      }
+      return { success: true, data: filteredData };
+    }
+
+    // --- Helper Function ---
+    function getSheetData(sheet) {
+      if (sheet.getLastRow() < 2) return [];
+      const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+      const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
+      return data.map(row => {
+        let obj = {};
+        headers.forEach((header, index) => {
+          // Sanitize header to be a valid key
+          const key = header.charAt(0).toLowerCase() + header.slice(1).replace(/\s/g, '');
+          obj[key] = row[index];
+        });
+        return obj;
+      });
+    }
+    -->
+</body>
+</html>

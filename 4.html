@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบยืม-คืนอุปกรณ์</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        #app-root {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column; /* Default for mobile */
+        }
+        main {
+            flex: 1;
+            padding: 1rem; /* Default padding for mobile */
+            overflow-y: auto;
+        }
+        /* Responsive adjustments for larger screens */
+        @media (min-width: 768px) {
+            #app-root {
+                flex-direction: row; /* Desktop layout */
+            }
+            main {
+                padding: 2rem; /* Larger padding for desktop */
+            }
+            .md\:w-64 {
+                width: 16rem; /* Tailwind's w-64 */
+            }
+            .md\:flex-row {
+                flex-direction: row;
+            }
+            .md\:p-8 {
+                padding: 2rem;
+            }
+            .md\:mb-0 {
+                margin-bottom: 0;
+            }
+            .md\:w-1\/3 {
+                width: 33.333333%;
+            }
+            .md\:w-1\/4 {
+                width: 25%;
+            }
+            .md\:col-span-2 {
+                grid-column: span 2 / span 2;
+            }
+        }
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* Loading Spinner Styles */
+        .loader {
+            border-top-color: #3498db; /* Blue color for spinner */
+            -webkit-animation: spin 1s linear infinite;
+            animation: spin 1s linear infinite;
+        }
+
+        @-webkit-keyframes spin {
+            0% { -webkit-transform: rotate(0deg); }
+            100% { -webkit-transform: rotate(360deg); }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div id="app-root" class="min-h-screen bg-gray-100 font-inter antialiased">
+        <!-- Sidebar Navigation -->
+        <aside class="w-full md:w-64 bg-gray-800 text-white p-4 flex flex-col shadow-lg">
+            <h1 class="text-3xl font-bold mb-8 text-center text-blue-300">
+                <i class="fas fa-tools mr-2"></i> ระบบยืม-คืนอุปกรณ์
+            </h1>
+            <nav>
+                <ul>
+                    <li class="mb-2">
+                        <button id="nav-dashboard" class="flex items-center w-full px-4 py-3 rounded-lg text-left transition-all duration-200 bg-blue-600 text-white shadow-md">
+                            <i class="fas fa-chart-line mr-3 w-5 text-center"></i>
+                            <span class="text-lg">แดชบอร์ด</span>
+                        </button>
+                    </li>
+                    <li class="mb-2">
+                        <button id="nav-equipment" class="flex items-center w-full px-4 py-3 rounded-lg text-left transition-all duration-200 text-gray-300 hover:bg-gray-700 hover:text-white">
+                            <i class="fas fa-laptop mr-3 w-5 text-center"></i>
+                            <span class="text-lg">อุปกรณ์ทั้งหมด</span>
+                        </button>
+                    </li>
+                    <li class="mb-2">
+                        <button id="nav-my-loans" class="flex items-center w-full px-4 py-3 rounded-lg text-left transition-all duration-200 text-gray-300 hover:bg-gray-700 hover:text-white">
+                            <i class="fas fa-handshake mr-3 w-5 text-center"></i>
+                            <span class="text-lg">อุปกรณ์ที่ฉันยืม</span>
+                        </button>
+                    </li>
+                    <div class="border-t border-gray-700 my-4"></div>
+                    <p class="text-xs text-gray-400 mb-2">โหมดผู้ดูแลระบบ:</p>
+                    <li class="mb-2">
+                        <button id="nav-admin-loans" class="flex items-center w-full px-4 py-3 rounded-lg text-left transition-all duration-200 text-gray-300 hover:bg-gray-700 hover:text-white">
+                            <i class="fas fa-list-alt mr-3 w-5 text-center"></i>
+                            <span class="text-lg">จัดการการยืม</span>
+                        </button>
+                    </li>
+                    <li class="mb-2">
+                        <button id="nav-admin-users" class="flex items-center w-full px-4 py-3 rounded-lg text-left transition-all duration-200 text-gray-300 hover:bg-gray-700 hover:text-white">
+                            <i class="fas fa-users-cog mr-3 w-5 text-center"></i>
+                            <span class="text-lg">จัดการผู้ใช้</span>
+                        </button>
+                    </li>
+                    <p class="mt-4 text-xs text-gray-500 break-words">
+                        UserID: <span id="user-id-display">Connecting...</span>
+                    </p>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 p-4 md:p-8 overflow-y-auto">
+            <h2 id="main-content-title" class="text-3xl font-semibold text-gray-800 mb-6 capitalize">แดชบอร์ดภาพรวม</h2>
+            <div id="message-box-container"></div>
+            <div id="main-content-area">
+                <!-- Content will be loaded here by JavaScript -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Custom Confirmation Modal -->
+    <div id="confirmation-modal-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full">
+            <p id="confirmation-modal-message" class="text-lg font-semibold mb-4 text-gray-800"></p>
+            <div class="flex justify-end space-x-3">
+                <button id="confirmation-modal-cancel" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-md transition-colors duration-200">ยกเลิก</button>
+                <button id="confirmation-modal-confirm" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200">ยืนยัน</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Borrow Form Modal -->
+    <div id="borrow-form-modal-overlay" class="fixed inset-0 bg-black bg-opacity50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
+            <h3 class="text-xl font-semibold mb-4 text-gray-800">ยืมอุปกรณ์: <span id="borrow-modal-equipment-name" class="font-bold"></span></h3>
+            <div class="mb-4">
+                <label for="borrow-modal-borrower-name" class="block text-gray-700 text-sm font-bold mb-2">ชื่อผู้ยืม:</label>
+                <input type="text" id="borrow-modal-borrower-name"
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="ชื่อผู้ยืม">
+            </div>
+            <div class="mb-6">
+                <label for="borrow-modal-expected-return-date" class="block text-gray-700 text-sm font-bold mb-2">วันที่คาดว่าจะคืน:</label>
+                <input type="date" id="borrow-modal-expected-return-date"
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button id="borrow-modal-cancel-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-md transition-colors duration-200">ยกเลิก</button>
+                <button id="borrow-modal-submit-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200">ยืนยันการยืม</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-gray-200 bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <div class="loader ease-linear rounded-full border-8 border-t-8 border-gray-400 h-24 w-24"></div>
+    </div>
+
+    <script type="module">
+        // --- Global Variables ---
+        // These are typically provided by the Canvas environment for Firebase,
+        // but for Local Storage, we'll manage them manually.
+        const appId = 'local-app-id'; // A static ID for local storage keys
+        var currentUserId = localStorage.getItem('localUserId') || crypto.randomUUID(); // Changed to var
+        localStorage.setItem('localUserId', currentUserId); // Persist user ID in local storage
+
+        var isAuthReady = true; // Always true for local storage since no external auth is needed // Changed to var
+        var activeTab = 'dashboard'; // Changed to var
+        var messageTimeoutId = null; // To clear message timeout // Changed to var
+
+        // --- DOM Elements ---
+        const mainContentArea = document.getElementById('main-content-area');
+        const mainContentTitle = document.getElementById('main-content-title');
+        const userIdDisplay = document.getElementById('user-id-display');
+        const messageBoxContainer = document.getElementById('message-box-container');
+        const loadingOverlay = document.getElementById('loading-overlay');
+
+        // Confirmation Modal Elements
+        const confirmationModalOverlay = document.getElementById('confirmation-modal-overlay');
+        const confirmationModalMessage = document.getElementById('confirmation-modal-message');
+        const confirmationModalConfirmBtn = document.getElementById('confirmation-modal-confirm');
+        const confirmationModalCancelBtn = document.getElementById('confirmation-modal-cancel');
+        let confirmationCallback = null;
+
+        // Borrow Form Modal Elements
+        const borrowFormModalOverlay = document.getElementById('borrow-form-modal-overlay');
+        const borrowModalEquipmentName = document.getElementById('borrow-modal-equipment-name');
+        const borrowModalBorrowerNameInput = document.getElementById('borrow-modal-borrower-name');
+        const borrowModalExpectedReturnDateInput = document.getElementById('borrow-modal-expected-return-date');
+        const borrowModalSubmitBtn = document.getElementById('borrow-modal-submit-btn');
+        const borrowModalCancelBtn = document.getElementById('borrow-modal-cancel-btn');
+        var currentBorrowingEquipment = null; // Stores the equipment item being borrowed // Changed to var
+
+        // --- Local Storage Functions ---
+        const loadData = (key) => {
+            try {
+                const data = localStorage.getItem(`${appId}_${key}`);
+                return data ? JSON.parse(data) : [];
+            } catch (e) {
+                console.error(`Error loading data from local storage for key ${key}:`, e);
+                return [];
+            }
+        };
+
+        const saveData = (key, data) => {
+            try {
+                localStorage.setItem(`${appId}_${key}`, JSON.stringify(data));
+            } catch (e) {
+                console.error(`Error saving data to local storage for key ${key}:`, e);
+            }
+        };
+
+        // Simple unique ID generator (UUID v4 style)
+        const generateUniqueId = () => {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        };
+
+        // --- Data Storage (in-memory, synced with Local Storage) ---
+        var equipmentData = loadData('equipment'); // Changed to var
+        var allLoansData = loadData('loans'); // Changed to var
+
+        // State for EquipmentList component
+        var isAddingEquipment = false; // Changed to var
+        var editingEquipment = null; // Changed to var
+        var equipmentSearchTerm = ''; // Changed to var
+
+        // State for AdminLoans component
+        var adminLoansSearchTerm = ''; // Changed to var
+        var adminLoansFilterStatus = 'all'; // Changed to var
+
+        // State for AdminUsers component
+        var adminUsersData = []; // Changed to var
+
+        // --- Loading Overlay Functions ---
+        const showLoading = () => {
+            if (loadingOverlay) {
+                loadingOverlay.classList.remove('hidden');
+            }
+        };
+
+        const hideLoading = () => {
+            if (loadingOverlay) {
+                loadingOverlay.classList.add('hidden');
+            }
+        };
+
+        // --- Message Box Functions ---
+        const showMessage = (msg, type = 'info') => {
+            if (messageTimeoutId) {
+                clearTimeout(messageTimeoutId);
+            }
+            const bgColor = type === 'error' ? 'bg-red-100 border-red-400 text-red-700' : 'bg-green-100 border-green-400 text-green-700';
+            messageBoxContainer.innerHTML = `
+                <div class="fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg border ${bgColor} flex items-center justify-between">
+                    <span>${msg}</span>
+                    <button id="message-box-close" class="ml-4 text-xl font-bold">&times;</button>
+                </div>
+            `;
+            document.getElementById('message-box-close').onclick = () => messageBoxContainer.innerHTML = '';
+            messageTimeoutId = setTimeout(() => messageBoxContainer.innerHTML = '', 3000);
+        };
+
+        // --- Custom Confirmation Modal Functions ---
+        const showConfirmation = (message, callback) => {
+            confirmationModalMessage.textContent = message;
+            confirmationCallback = callback;
+            confirmationModalOverlay.classList.remove('hidden');
+        };
+
+        const hideConfirmation = () => {
+            confirmationModalOverlay.classList.add('hidden');
+            confirmationCallback = null;
+        };
+
+        confirmationModalConfirmBtn.onclick = () => {
+            if (confirmationCallback) {
+                confirmationCallback(true);
+            }
+            hideConfirmation();
+        };
+
+        confirmationModalCancelBtn.onclick = () => {
+            if (confirmationCallback) {
+                confirmationCallback(false);
+            }
+            hideConfirmation();
+        };
+
+        // --- Borrow Form Modal Functions ---
+        const showBorrowModal = (equipmentItem) => {
+            currentBorrowingEquipment = equipmentItem;
+            borrowModalEquipmentName.textContent = equipmentItem.name;
+            borrowModalBorrowerNameInput.value = currentUserId; // Default to current user ID
+            borrowModalExpectedReturnDateInput.value = ''; // Clear previous date
+            borrowFormModalOverlay.classList.remove('hidden');
+        };
+
+        const hideBorrowModal = () => {
+            borrowFormModalOverlay.classList.add('hidden');
+            currentBorrowingEquipment = null;
+            borrowModalBorrowerNameInput.value = '';
+            borrowModalExpectedReturnDateInput.value = '';
+        };
+
+        borrowModalCancelBtn.onclick = hideBorrowModal;
+        borrowModalSubmitBtn.onclick = async () => {
+            const borrowerName = borrowModalBorrowerNameInput.value.trim();
+            const expectedReturnDateStr = borrowModalExpectedReturnDateInput.value;
+
+            if (!borrowerName || !expectedReturnDateStr) {
+                showMessage('กรุณากรอกชื่อผู้ยืมและวันที่คาดว่าจะคืนให้ครบถ้วน', 'error');
+                return;
+            }
+
+            if (!currentBorrowingEquipment) {
+                showMessage('เกิดข้อผิดพลาด: ไม่พบอุปกรณ์ที่เลือก', 'error');
+                hideBorrowModal();
+                return;
+            }
+
+            const expectedReturnDate = new Date(expectedReturnDateStr);
+            if (isNaN(expectedReturnDate.getTime())) {
+                showMessage('วันที่คาดว่าจะคืนไม่ถูกต้อง', 'error');
+                return;
+            }
+
+            try {
+                showLoading(); // Show loading before processing
+                const newLoan = {
+                    id: generateUniqueId(),
+                    equipmentId: currentBorrowingEquipment.id,
+                    equipmentName: currentBorrowingEquipment.name,
+                    borrowerId: currentUserId,
+                    borrowerName: borrowerName,
+                    borrowDate: new Date().toISOString(), // Store as ISO string
+                    expectedReturnDate: expectedReturnDate.toISOString(), // Store as ISO string
+                    returnDate: null,
+                    status: 'borrowed',
+                };
+                allLoansData.push(newLoan);
+                saveData('loans', allLoansData);
+
+                // Update equipment status
+                const eqIndex = equipmentData.findIndex(eq => eq.id === currentBorrowingEquipment.id);
+                if (eqIndex !== -1) {
+                    equipmentData[eqIndex].status = 'on-loan';
+                    equipmentData[eqIndex].lastUpdated = new Date().toISOString(); // Store as ISO string
+                    saveData('equipment', equipmentData);
+                }
+
+                showMessage(`ยืม "${currentBorrowingEquipment.name}" สำเร็จ!`, 'info');
+                hideBorrowModal();
+                // Re-render relevant tables after data change
+                renderContent(activeTab); // Re-render current tab
+            } catch (e) {
+                console.error("Error borrowing equipment:", e);
+                showMessage('เกิดข้อผิดพลาดในการยืมอุปกรณ์', 'error');
+            } finally {
+                hideLoading();
+            }
+        };
+
+        // --- Navigation Functions ---
+        const getTabTitle = (tab) => {
+            switch (tab) {
+                case 'dashboard': return 'แดชบอร์ดภาพรวม';
+                case 'equipment': return 'รายการอุปกรณ์ทั้งหมด';
+                case 'my-loans': return 'อุปกรณ์ที่ฉันยืม';
+                case 'admin-loans': return 'จัดการการยืม-คืน (ผู้ดูแล)';
+                case 'admin-users': return 'จัดการผู้ใช้งาน (ผู้ดูแล)';
+                default: return '';
+            }
+        };
+
+        const setActiveTab = (tabId) => {
+            // Remove active class from all nav buttons
+            document.querySelectorAll('aside nav button').forEach(button => {
+                button.classList.remove('bg-blue-600', 'text-white', 'shadow-md');
+                button.classList.add('text-gray-300', 'hover:bg-gray-700', 'hover:text-white');
+            });
+
+            // Add active class to the clicked button
+            const clickedButton = document.getElementById(`nav-${tabId}`);
+            if (clickedButton) {
+                clickedButton.classList.remove('text-gray-300', 'hover:bg-gray-700', 'hover:text-white');
+                clickedButton.classList.add('bg-blue-600', 'text-white', 'shadow-md');
+            }
+
+            activeTab = tabId;
+            mainContentTitle.textContent = getTabTitle(activeTab);
+            renderContent(activeTab);
+        };
+
+        // --- Render Content Based on Active Tab ---
+        const renderContent = (tab) => {
+            mainContentArea.innerHTML = ''; // Clear previous content
+            if (!isAuthReady) {
+                mainContentArea.innerHTML = '<p class="text-center text-gray-500 py-8">กำลังเชื่อมต่อ...</p>';
+                return;
+            }
+
+            showLoading(); // Show loading when data fetching for a tab starts
+
+            // Simulate loading time for local storage operations
+            setTimeout(() => {
+                switch (tab) {
+                    case 'dashboard':
+                        renderDashboard();
+                        break;
+                    case 'equipment':
+                        renderEquipmentList();
+                        break;
+                    case 'my-loans':
+                        renderMyLoans();
+                        break;
+                    case 'admin-loans':
+                        renderAdminLoans();
+                        break;
+                    case 'admin-users':
+                        renderAdminUsers();
+                        break;
+                }
+                hideLoading(); // Hide after content is rendered
+            }, 300); // Small delay to show loading animation
+        };
+
+        // --- Dashboard Component ---
+        const renderDashboard = () => {
+            mainContentArea.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div id="dashboard-equipment-status" class="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300">
+                        <h3 class="text-xl font-semibold mb-3 text-gray-700">สถานะอุปกรณ์</h3>
+                        <p class="text-gray-600 text-lg">ทั้งหมด: <span class="font-bold text-blue-600" id="status-total">0</span> ชิ้น</p>
+                        <p class="text-gray-600 text-lg">พร้อมใช้งาน: <span class="font-bold text-green-600" id="status-available">0</span> ชิ้น</p>
+                        <p class="text-gray-600 text-lg">อยู่ระหว่างยืม: <span class="font-bold text-yellow-600" id="status-on-loan">0</span> ชิ้น</p>
+                        <p class="text-gray-600 text-lg">อยู่ในระหว่างซ่อมบำรุง: <span class="font-bold text-red-600" id="status-maintenance">0</span> ชิ้น</p>
+                    </div>
+                    <div id="dashboard-latest-loans" class="bg-white p-6 rounded-lg shadow-md col-span-1 md:col-span-2 lg:col-span-2 hover:shadow-xl transition-shadow duration-300">
+                        <h3 class="text-xl font-semibold mb-3 text-gray-700">การยืมล่าสุด 5 รายการ</h3>
+                        <div id="latest-loans-table-container" class="overflow-x-auto">
+                            <p class="text-gray-500 text-center py-8">กำลังโหลดข้อมูล...</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const statusTotal = document.getElementById('status-total');
+            const statusAvailable = document.getElementById('status-available');
+            const statusOnLoan = document.getElementById('status-on-loan');
+            const statusMaintenance = document.getElementById('status-maintenance');
+            const latestLoansTableContainer = document.getElementById('latest-loans-table-container');
+
+            let total = 0;
+            let available = 0;
+            let onLoan = 0;
+            let maintenance = 0;
+
+            equipmentData.forEach(item => {
+                total++;
+                const status = item.status;
+                if (status === 'available') available++;
+                else if (status === 'on-loan') onLoan++;
+                else if (status === 'maintenance') maintenance++;
+            });
+
+            if (statusTotal) statusTotal.textContent = total;
+            if (statusAvailable) statusAvailable.textContent = available;
+            if (statusOnLoan) statusOnLoan.textContent = onLoan;
+            if (statusMaintenance) statusMaintenance.textContent = maintenance;
+
+            const sortedLoans = [...allLoansData].sort((a, b) => new Date(b.borrowDate).getTime() - new Date(a.borrowDate).getTime());
+            const latestLoans = sortedLoans.slice(0, 5);
+
+            if (latestLoansTableContainer) {
+                if (latestLoans.length === 0) {
+                    latestLoansTableContainer.innerHTML = '<p class="text-gray-500 text-center py-8">ยังไม่มีการยืม-คืนอุปกรณ์</p>';
+                } else {
+                    latestLoansTableContainer.innerHTML = `
+                        <table class="min-w-full bg-white rounded-lg overflow-hidden">
+                            <thead class="bg-gray-100">
+                                <tr>
+                                    <th class="py-2 px-4 text-left text-gray-600 font-medium">อุปกรณ์</th>
+                                    <th class="py-2 px-4 text-left text-gray-600 font-medium">ชื่อ</th>
+                                    <th class="py-2 px-4 text-left text-gray-600 font-medium">วันที่ยืม</th>
+                                    <th class="py-2 px-4 text-left text-gray-600 font-medium">สถานะ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${latestLoans.map(loan => `
+                                    <tr class="border-b border-gray-200 last:border-0 hover:bg-gray-50">
+                                        <td class="py-2 px-4">${loan.equipmentName}</td>
+                                        <td class="py-2 px-4 text-sm break-words">${loan.borrowerName || loan.borrowerId}</td>
+                                        <td class="py-2 px-4">${new Date(loan.borrowDate).toLocaleString()}</td>
+                                        <td class="py-2 px-4">
+                                            <span class="px-2 py-1 text-xs font-semibold rounded-full
+                                                ${loan.status === 'borrowed' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}">
+                                                ${loan.status === 'borrowed' ? 'ยืมอยู่' : 'คืนแล้ว'}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                }
+            }
+        };
+
+        // --- Equipment List Component ---
+        const renderEquipmentList = () => {
+            mainContentArea.innerHTML = `
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="flex flex-col md:flex-row justify-between items-center mb-6">
+                        <input type="text" id="equipment-search-input" placeholder="ค้นหาอุปกรณ์..."
+                            class="p-2 border border-gray-300 rounded-md w-full md:w-1/3 mb-4 md:mb-0 focus:ring-blue-500 focus:border-blue-500"
+                            value="${equipmentSearchTerm}">
+                        <div class="flex space-x-2">
+                            <button id="add-equipment-toggle-btn"
+                                class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md transition-all duration-200 shadow-md hover:shadow-lg">
+                                <i class="fas fa-plus mr-2"></i> ${isAddingEquipment ? 'ยกเลิก' : 'เพิ่มอุปกรณ์ใหม่'}
+                            </button>
+                            <button id="download-equipment-csv-btn"
+                                class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md transition-all duration-200 shadow-md hover:shadow-lg">
+                                <i class="fas fa-download mr-2"></i> ดาวน์โหลด CSV
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="add-equipment-form-container" class="${isAddingEquipment ? '' : 'hidden'} mb-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
+                        <h3 class="text-xl font-semibold mb-4 text-gray-700">เพิ่มอุปกรณ์ใหม่</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input type="text" id="new-equipment-name" placeholder="ชื่ออุปกรณ์" class="p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            <input type="text" id="new-equipment-type" placeholder="ประเภท" class="p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            <input type="text" id="new-equipment-serialNumber" placeholder="รหัสประจำเครื่อง / SN" class="p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            <select id="new-equipment-status" class="p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                <option value="available">พร้อมใช้งาน</option>
+                                <option value="on-loan">อยู่ระหว่างยืม</option>
+                                <option value="maintenance">อยู่ระหว่างซ่อมบำรุง</option>
+                                <option value="unavailable">ไม่พร้อมใช้งาน</option>
+                            </select>
+                        </div>
+                        <button id="add-equipment-submit-btn" class="mt-4 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-md transition-all duration-200 shadow-md hover:shadow-lg">
+                            เพิ่มอุปกรณ์
+                        </button>
+                    </div>
+
+                    <div id="equipment-table-container" class="overflow-x-auto rounded-lg shadow-sm border border-gray-200">
+                        <p class="text-gray-500 text-center py-8">กำลังโหลดข้อมูลอุปกรณ์...</p>
+                    </div>
+                </div>
+            `;
+
+            // Attach event listeners
+            document.getElementById('equipment-search-input').oninput = (e) => {
+                equipmentSearchTerm = e.target.value;
+                updateEquipmentTable();
+            };
+            document.getElementById('add-equipment-toggle-btn').onclick = () => {
+                isAddingEquipment = !isAddingEquipment;
+                renderEquipmentList(); // Re-render to show/hide form
+            };
+            document.getElementById('add-equipment-submit-btn').onclick = handleAddEquipment;
+            document.getElementById('download-equipment-csv-btn').onclick = () => {
+                const headers = ["ชื่ออุปกรณ์", "ประเภท", "รหัส/SN", "สถานะ"];
+                const data = equipmentData.map(item => {
+                    let statusThai;
+                    switch (item.status) {
+                        case 'available': statusThai = 'พร้อมใช้งาน'; break;
+                        case 'on-loan': statusThai = 'อยู่ระหว่างยืม'; break;
+                        case 'maintenance': statusThai = 'อยู่ระหว่างซ่อมบำรุง'; break;
+                        case 'unavailable': statusThai = 'ไม่พร้อมใช้งาน'; break;
+                        default: statusThai = item.status;
+                    }
+                    return [item.name, item.type, item.serialNumber, statusThai];
+                });
+                downloadCSV(headers, data, 'equipment_list.csv');
+            };
+            updateEquipmentTable(); // Initial render of the table
+        };
+
+        const updateEquipmentTable = () => {
+            const filteredEquipment = equipmentData.filter(item =>
+                item.name.toLowerCase().includes(equipmentSearchTerm.toLowerCase()) ||
+                item.type.toLowerCase().includes(equipmentSearchTerm.toLowerCase()) ||
+                item.serialNumber.toLowerCase().includes(equipmentSearchTerm.toLowerCase())
+            );
+
+            const tableContainer = document.getElementById('equipment-table-container');
+            if (filteredEquipment.length === 0) {
+                tableContainer.innerHTML = '<p class="text-gray-500 text-center py-8">ไม่พบอุปกรณ์</p>';
+                return;
+            }
+
+            tableContainer.innerHTML = `
+                <table class="min-w-full bg-white">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="py-3 px-4 text-left text-gray-600 font-semibold">ชื่ออุปกรณ์</th>
+                            <th class="py-3 px-4 text-left text-gray-600 font-semibold">ประเภท</th>
+                            <th class="py-3 px-4 text-left text-gray-600 font-semibold">รหัส/SN</th>
+                            <th class="py-3 px-4 text-left text-gray-600 font-semibold">สถานะ</th>
+                            <th class="py-3 px-4 text-left text-gray-600 font-semibold">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${filteredEquipment.map(item => `
+                            <tr class="border-b border-gray-200 last:border-0 hover:bg-gray-50">
+                                ${editingEquipment && editingEquipment.id === item.id ? `
+                                    <td class="py-3 px-4"><input type="text" value="${editingEquipment.name}" oninput="editingEquipment.name = this.value;" class="p-1 border rounded w-full" /></td>
+                                    <td class="py-3 px-4"><input type="text" value="${editingEquipment.type}" oninput="editingEquipment.type = this.value;" class="p-1 border rounded w-full" /></td>
+                                    <td class="py-3 px-4"><input type="text" value="${editingEquipment.serialNumber}" oninput="editingEquipment.serialNumber = this.value;" class="p-1 border rounded w-full" /></td>
+                                    <td class="py-3 px-4">
+                                        <select onchange="editingEquipment.status = this.value;" class="p-1 border rounded w-full">
+                                            <option value="available" ${editingEquipment.status === 'available' ? 'selected' : ''}>พร้อมใช้งาน</option>
+                                            <option value="on-loan" ${editingEquipment.status === 'on-loan' ? 'selected' : ''}>อยู่ระหว่างยืม</option>
+                                            <option value="maintenance" ${editingEquipment.status === 'maintenance' ? 'selected' : ''}>อยู่ระหว่างซ่อมบำรุง</option>
+                                            <option value="unavailable" ${editingEquipment.status === 'unavailable' ? 'selected' : ''}>ไม่พร้อมใช้งาน</option>
+                                        </select>
+                                    </td>
+                                    <td class="py-3 px-4 flex space-x-2">
+                                        <button data-id="${item.id}" class="save-edit-btn bg-green-500 hover:bg-green-600 text-white text-sm py-1 px-3 rounded-md shadow-sm">บันทึก</button>
+                                        <button data-id="${item.id}" class="cancel-edit-btn bg-gray-500 hover:bg-gray-600 text-white text-sm py-1 px-3 rounded-md shadow-sm">ยกเลิก</button>
+                                    </td>
+                                ` : `
+                                    <td class="py-3 px-4">${item.name}</td>
+                                    <td class="py-3 px-4">${item.type}</td>
+                                    <td class="py-3 px-4">${item.serialNumber}</td>
+                                    <td class="py-3 px-4">
+                                        <span class="px-2 py-1 text-xs font-semibold rounded-full
+                                            ${item.status === 'available' ? 'bg-green-100 text-green-800' :
+                                            item.status === 'on-loan' ? 'bg-yellow-100 text-yellow-800' :
+                                            item.status === 'maintenance' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}">
+                                            ${item.status === 'available' ? 'พร้อมใช้งาน' :
+                                            item.status === 'on-loan' ? 'ยืมอยู่' :
+                                            item.status === 'maintenance' ? 'อยู่ระหว่างซ่อมบำรุง' : 'ไม่พร้อมใช้งาน'}
+                                        </span>
+                                    </td>
+                                    <td class="py-3 px-4 flex space-x-2">
+                                        ${item.status === 'available' ? `
+                                            <button data-id="${item.id}" class="borrow-btn bg-blue-500 hover:bg-blue-600 text-white text-sm py-1 px-3 rounded-md shadow-sm">
+                                                ยืม
+                                            </button>
+                                        ` : ''}
+                                        <button data-id="${item.id}" class="edit-btn bg-yellow-500 hover:bg-yellow-600 text-white text-sm py-1 px-3 rounded-md shadow-sm">
+                                            แก้ไข
+                                        </button>
+                                        <button data-id="${item.id}" class="delete-btn bg-red-500 hover:bg-red-600 text-white text-sm py-1 px-3 rounded-md shadow-sm">
+                                            ลบ
+                                        </button>
+                                    </td>
+                                `}
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            // Re-attach event listeners for dynamically created buttons
+            document.querySelectorAll('.borrow-btn').forEach(btn => {
+                btn.onclick = (e) => showBorrowModal(equipmentData.find(item => item.id === e.target.dataset.id));
+            });
+            document.querySelectorAll('.edit-btn').forEach(btn => {
+                btn.onclick = (e) => {
+                    editingEquipment = { ...equipmentData.find(item => item.id === e.target.dataset.id) };
+                    updateEquipmentTable(); // Re-render to show edit form
+                };
+            });
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.onclick = (e) => handleDeleteEquipment(e.target.dataset.id);
+            });
+            document.querySelectorAll('.save-edit-btn').forEach(btn => {
+                btn.onclick = handleUpdateEquipment;
+            });
+            document.querySelectorAll('.cancel-edit-btn').forEach(btn => {
+                btn.onclick = () => {
+                    editingEquipment = null;
+                    updateEquipmentTable(); // Re-render to hide edit form
+                };
+            });
+        };
+
+        const handleAddEquipment = async () => {
+            const name = document.getElementById('new-equipment-name').value;
+            const type = document.getElementById('new-equipment-type').value;
+            const serialNumber = document.getElementById('new-equipment-serialNumber').value;
+            const status = document.getElementById('new-equipment-status').value;
+
+            if (!name || !type || !serialNumber) {
+                showMessage('กรุณากรอกข้อมูลอุปกรณ์ให้ครบถ้วน', 'error');
+                return;
+            }
+
+            // Check for duplicate serial number
+            if (equipmentData.some(item => item.serialNumber === serialNumber)) {
+                showMessage('รหัสประจำเครื่องนี้มีอยู่แล้วในระบบ', 'error');
+                return;
+            }
+
+            try {
+                showLoading();
+                const newEquipment = {
+                    id: generateUniqueId(),
+                    name,
+                    type,
+                    serialNumber,
+                    status,
+                    lastUpdated: new Date().toISOString(), // Store as ISO string
+                };
+                equipmentData.push(newEquipment);
+                saveData('equipment', equipmentData);
+
+                showMessage('เพิ่มอุปกรณ์สำเร็จ', 'info');
+                // Clear form
+                document.getElementById('new-equipment-name').value = '';
+                document.getElementById('new-equipment-type').value = '';
+                document.getElementById('new-equipment-serialNumber').value = '';
+                document.getElementById('new-equipment-status').value = 'available';
+                isAddingEquipment = false; // Hide form after adding
+                renderEquipmentList(); // Re-render to update UI
+            } catch (e) {
+                console.error("Error adding equipment: ", e);
+                showMessage('เกิดข้อผิดพลาดในการเพิ่มอุปกรณ์', 'error');
+            } finally {
+                hideLoading();
+            }
+        };
+
+        const handleUpdateEquipment = async () => {
+            if (!editingEquipment || !editingEquipment.name || !editingEquipment.type || !editingEquipment.serialNumber) {
+                showMessage('กรุณากรอกข้อมูลอุปกรณ์ให้ครบถ้วน', 'error');
+                return;
+            }
+
+            // Check for duplicate serial number if it changed
+            if (equipmentData.some(item => item.serialNumber === editingEquipment.serialNumber && item.id !== editingEquipment.id)) {
+                showMessage('รหัสประจำเครื่องนี้มีอยู่แล้วในระบบ', 'error');
+                return;
+            }
+
+            try {
+                showLoading();
+                const index = equipmentData.findIndex(item => item.id === editingEquipment.id);
+                if (index !== -1) {
+                    equipmentData[index] = {
+                        ...editingEquipment,
+                        lastUpdated: new Date().toISOString(), // Update timestamp
+                    };
+                    saveData('equipment', equipmentData);
+                }
+
+                showMessage('อัปเดตข้อมูลอุปกรณ์สำเร็จ', 'info');
+                editingEquipment = null; // Exit editing mode
+                updateEquipmentTable(); // Re-render to update UI
+            } catch (e) {
+                console.error("Error updating equipment: ", e);
+                showMessage('เกิดข้อผิดพลาดในการอัปเดตอุปกรณ์', 'error');
+            } finally {
+                hideLoading();
+            }
+        };
+
+        const handleDeleteEquipment = (id) => {
+            showConfirmation('คุณแน่ใจหรือไม่ที่จะลบอุปกรณ์นี้?', async (confirmed) => {
+                if (confirmed) {
+                    try {
+                        showLoading();
+                        equipmentData = equipmentData.filter(item => item.id !== id);
+                        saveData('equipment', equipmentData);
+
+                        // Also remove any loans associated with this equipment
+                        allLoansData = allLoansData.filter(loan => loan.equipmentId !== id);
+                        saveData('loans', allLoansData);
+
+                        showMessage('ลบอุปกรณ์สำเร็จ', 'info');
+                        updateEquipmentTable(); // Re-render to update UI
+                        renderDashboard(); // Update dashboard counts
+                    } catch (e) {
+                        console.error("Error deleting equipment: ", e);
+                        showMessage('เกิดข้อผิดพลาดในการลบอุปกรณ์', 'error');
+                    } finally {
+                        hideLoading();
+                    }
+                }
+            });
+        };
+
+        // --- My Loans Component ---
+        let myLoansData = []; // This will be filtered from allLoansData
+
+        const renderMyLoans = () => {
+            mainContentArea.innerHTML = `
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-700">รายการอุปกรณ์ที่ฉันยืมอยู่</h3>
+                    <div id="my-loans-table-container" class="overflow-x-auto rounded-lg shadow-sm border border-gray-200">
+                        <p class="text-gray-500 text-center py-8">กำลังโหลดข้อมูล...</p>
+                    </div>
+                </div>
+            `;
+            // Filter loans relevant to current user
+            myLoansData = allLoansData.filter(loan => loan.borrowerId === currentUserId);
+            const sortedLoans = [...myLoansData].sort((a, b) => new Date(b.borrowDate).getTime() - new Date(a.borrowDate).getTime());
+            updateMyLoansTable(sortedLoans);
+        };
+
+        const updateMyLoansTable = (loans) => {
+            const tableContainer = document.getElementById('my-loans-table-container');
+            if (loans.length === 0) {
+                tableContainer.innerHTML = '<p class="text-gray-500 text-center py-8">คุณยังไม่ได้ยืมอุปกรณ์ใดๆ</p>';
+                return;
+            }
+
+            tableContainer.innerHTML = `
+                <table class="min-w-full bg-white">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="py-3 px-4 text-left text-gray-600 font-semibold">อุปกรณ์</th>
+                            <th class="py-3 px-4 text-left text-gray-600 font-semibold">ชื่อ</th>
+                            <th class="py-3 px-4 text-left text-gray-600 font-semibold">วันที่ยืม</th>
+                            <th class="py-3 px-4 text-left text-gray-600 font-semibold">วันที่คืน (คาดการณ์)</th>
+                            <th class="py-3 px-4 text-left text-gray-600 font-semibold">สถานะ</th>
+                            <th class="py-3 px-4 text-left text-gray-600 font-semibold">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${loans.map(loan => `
+                            <tr class="border-b border-gray-200 last:border-0 hover:bg-gray-50">
+                                <td class="py-3 px-4">${loan.equipmentName}</td>
+                                <td class="py-3 px-4 text-sm break-words">${loan.borrowerName || loan.borrowerId}</td>
+                                <td class="py-3 px-4">${new Date(loan.borrowDate).toLocaleString()}</td>
+                                <td class="py-3 px-4">${loan.expectedReturnDate ? new Date(loan.expectedReturnDate).toLocaleString() : 'N/A'}</td>
+                                <td class="py-3 px-4">
+                                    <span class="px-2 py-1 text-xs font-semibold rounded-full
+                                        ${loan.status === 'borrowed' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}">
+                                        ${loan.status === 'borrowed' ? 'ยืมอยู่' : 'คืนแล้ว'}
+                                    </span>
+                                </td>
+                                <td class="py-3 px-4">
+                                    ${loan.status === 'borrowed' ? `
+                                        <button data-id="${loan.id}" class="return-loan-btn bg-green-500 hover:bg-green-600 text-white text-sm py-1 px-3 rounded-md shadow-sm">
+                                            คืนอุปกรณ์
+                                        </button>
+                                    ` : ''}
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            document.querySelectorAll('.return-loan-btn').forEach(btn => {
+                btn.onclick = (e) => handleReturn(myLoansData.find(loan => loan.id === e.target.dataset.id));
+            });
+        };
+
+        const handleReturn = (loan) => {
+            if (loan.status !== 'borrowed') {
+                showMessage('อุปกรณ์นี้ไม่ได้อยู่ในสถานะที่ยืมอยู่', 'error');
+                return;
+            }
+
+            showConfirmation(`คุณแน่ใจหรือไม่ที่จะคืนอุปกรณ์ "${loan.equipmentName}"?`, async (confirmed) => {
+                if (confirmed) {
+                    try {
+                        showLoading();
+                        // Update loan record
+                        const loanIndex = allLoansData.findIndex(l => l.id === loan.id);
+                        if (loanIndex !== -1) {
+                            allLoansData[loanIndex].returnDate = new Date().toISOString();
+                            allLoansData[loanIndex].status = 'returned';
+                            saveData('loans', allLoansData);
+                        }
+
+                        // Update equipment status back to 'available'
+                        const equipmentIndex = equipmentData.findIndex(eq => eq.id === loan.equipmentId);
+                        if (equipmentIndex !== -1) {
+                            equipmentData[equipmentIndex].status = 'available';
+                            equipmentData[equipmentIndex].lastUpdated = new Date().toISOString();
+                            saveData('equipment', equipmentData);
+                        }
+
+                        showMessage(`คืน "${loan.equipmentName}" สำเร็จ!`, 'info');
+                        renderContent(activeTab); // Re-render current tab
+                    } catch (e) {
+                        console.error("Error returning equipment:", e);
+                        showMessage('เกิดข้อผิดพลาดในการคืนอุปกรณ์', 'error');
+                    } finally {
+                        hideLoading();
+                    }
+                }
+            });
+        };
+
+        // --- Admin Loans Component ---
+        const renderAdminLoans = () => {
+            mainContentArea.innerHTML = `
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-700">ประวัติการยืม-คืนทั้งหมด</h3>
+                    <div class="flex flex-col md:flex-row justify-between items-center mb-6">
+                        <input type="text" id="admin-loans-search-input" placeholder="ค้นหาอุปกรณ์หรือผู้ยืม..."
+                            class="p-2 border border-gray-300 rounded-md w-full md:w-1/3 mb-4 md:mb-0 focus:ring-blue-500 focus:border-blue-500"
+                            value="${adminLoansSearchTerm}">
+                        <select id="admin-loans-filter-status"
+                            class="p-2 border border-gray-300 rounded-md w-full md:w-1/4 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="all" ${adminLoansFilterStatus === 'all' ? 'selected' : ''}>ทั้งหมด</option>
+                            <option value="borrowed" ${adminLoansFilterStatus === 'borrowed' ? 'selected' : ''}>ยืมอยู่</option>
+                            <option value="returned" ${adminLoansFilterStatus === 'returned' ? 'selected' : ''}>คืนแล้ว</option>
+                        </select>
+                        <button id="download-admin-loans-csv-btn"
+                            class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md transition-all duration-200 shadow-md hover:shadow-lg">
+                            <i class="fas fa-download mr-2"></i> ดาวน์โหลด CSV
+                        </button>
+                    </div>
+
+                    <div id="admin-loans-table-container" class="overflow-x-auto rounded-lg shadow-sm border border-gray-200">
+                        <p class="text-gray-500 text-center py-8">กำลังโหลดข้อมูล...</p>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('admin-loans-search-input').oninput = (e) => {
+                adminLoansSearchTerm = e.target.value;
+                updateAdminLoansTable();
+            };
+            document.getElementById('admin-loans-filter-status').onchange = (e) => {
+                adminLoansFilterStatus = e.target.value;
+                updateAdminLoansTable();
+            };
+            document.getElementById('download-admin-loans-csv-btn').onclick = () => {
+                const headers = ["อุปกรณ์", "ผู้ยืม (UID)", "ชื่อผู้ยืม", "วันที่ยืม", "วันที่คืน", "สถานะ"];
+                const data = allLoansData.map(loan => {
+                    let statusThai;
+                    switch (loan.status) {
+                        case 'borrowed': statusThai = 'ยืมอยู่'; break;
+                        case 'returned': statusThai = 'คืนแล้ว'; break;
+                        default: statusThai = loan.status;
+                    }
+                    return [
+                        loan.equipmentName,
+                        loan.borrowerId,
+                        loan.borrowerName || '',
+                        new Date(loan.borrowDate).toLocaleString(),
+                        loan.returnDate ? new Date(loan.returnDate).toLocaleString() : '-',
+                        statusThai
+                    ];
+                });
+                downloadCSV(headers, data, 'all_loans_history.csv');
+            };
+            updateAdminLoansTable(); // Initial render
+        };
+
+        const updateAdminLoansTable = () => {
+            const filteredLoans = allLoansData.filter(loan => {
+                const matchesSearch =
+                    loan.equipmentName.toLowerCase().includes(adminLoansSearchTerm.toLowerCase()) ||
+                    loan.borrowerId.toLowerCase().includes(adminLoansSearchTerm.toLowerCase()) ||
+                    (loan.borrowerName && loan.borrowerName.toLowerCase().includes(adminLoansSearchTerm.toLowerCase()));
+                const matchesStatus = adminLoansFilterStatus === 'all' || loan.status === adminLoansFilterStatus;
+                return matchesSearch && matchesStatus;
+            });
+
+            const tableContainer = document.getElementById('admin-loans-table-container');
+            if (filteredLoans.length === 0) {
+                tableContainer.innerHTML = '<p class="text-gray-500 text-center py-8">ไม่พบประวัติการยืม-คืน</p>';
+                return;
+            }
+
+            tableContainer.innerHTML = `
+                <table class="min-w-full bg-white">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="py-3 px-4 text-left text-gray-600 font-semibold">อุปกรณ์</th>
+                            <th class="py-3 px-4 text-left text-gray-600 font-semibold">ชื่อ</th>
+                            <th class="py-3 px-4 text-left text-gray-600 font-semibold">วันที่ยืม</th>
+                            <th class="py-3 px-4 text-left text-gray-600 font-semibold">วันที่คืน</th>
+                            <th class="py-3 px-4 text-left text-gray-600 font-semibold">สถานะ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${filteredLoans.map(loan => `
+                            <tr class="border-b border-gray-200 last:border-0 hover:bg-gray-50">
+                                <td class="py-3 px-4">${loan.equipmentName}</td>
+                                <td class="py-3 px-4">${loan.borrowerName || '-'}</td>
+                                <td class="py-3 px-4">${new Date(loan.borrowDate).toLocaleString()}</td>
+                                <td class="py-3 px-4">${loan.returnDate ? new Date(loan.returnDate).toLocaleString() : '-'}</td>
+                                <td class="py-3 px-4">
+                                    <span class="px-2 py-1 text-xs font-semibold rounded-full
+                                        ${loan.status === 'borrowed' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}">
+                                        ${loan.status === 'borrowed' ? 'ยืมอยู่' : 'คืนแล้ว'}
+                                    </span>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        };
+
+        // --- Admin Users Component ---
+        const renderAdminUsers = async () => {
+            mainContentArea.innerHTML = `
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-700">จัดการผู้ใช้งาน</h3>
+                    <p class="text-gray-600 mb-4">
+                        (ในระบบจริง ส่วนนี้จะแสดงและจัดการผู้ใช้ทั้งหมด เช่น เพิ่ม/ลบ/แก้ไขสิทธิ์ของผู้ใช้ ในเดโมนี้จะแสดงเพียง UserID ที่มีการยืม-คืนเกิดขึ้น)
+                    </p>
+                    <div id="admin-users-table-container" class="overflow-x-auto rounded-lg shadow-sm border border-gray-200">
+                        <p class="text-gray-500 text-center py-8">กำลังโหลดข้อมูล...</p>
+                    </div>
+                </div>
+            `;
+
+            // Collect unique borrower UIDs and names from all loans
+            const uniqueUsers = new Map(); // Map to store {uid: {uid, name, role}}
+            allLoansData.forEach(loan => {
+                if (!uniqueUsers.has(loan.borrowerId)) {
+                    uniqueUsers.set(loan.borrowerId, {
+                        id: loan.borrowerId, // Use borrowerId as id for simplicity
+                        uid: loan.borrowerId,
+                        name: loan.borrowerName || 'ไม่ระบุชื่อ',
+                        role: 'ผู้ยืม', // Default role for borrowers
+                    });
+                }
+            });
+            adminUsersData = Array.from(uniqueUsers.values());
+            updateAdminUsersTable();
+        };
+
+        const updateAdminUsersTable = () => {
+            const tableContainer = document.getElementById('admin-users-table-container');
+            if (adminUsersData.length === 0) {
+                tableContainer.innerHTML = '<p class="text-gray-500 text-center py-8">ไม่พบผู้ใช้งาน</p>';
+                return;
+            }
+
+            tableContainer.innerHTML = `
+                <table class="min-w-full bg-white">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="py-3 px-4 text-left text-gray-600 font-semibold">User ID</th>
+                            <th class="py-3 px-4 text-left text-gray-600 font-semibold">ชื่อ</th>
+                            <th class="py-3 px-4 text-left text-gray-600 font-semibold">บทบาท (ตัวอย่าง)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${adminUsersData.map(user => `
+                            <tr class="border-b border-gray-200 last:border-0 hover:bg-gray-50">
+                                <td class="py-3 px-4 break-words">${user.uid}</td>
+                                <td class="py-3 px-4">${user.name}</td>
+                                <td class="py-3 px-4">${user.role}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        };
+
+        // --- CSV Download Function ---
+        const downloadCSV = (headers, data, filename) => {
+            let csvContent = headers.join(',') + '\n'; // Add headers
+            data.forEach(row => {
+                csvContent += row.map(field => {
+                    // Convert field to string to handle numbers/dates correctly
+                    let stringField = String(field);
+                    // Enclose fields containing commas, double quotes, or newlines in double quotes
+                    // and escape existing double quotes with another double quote.
+                    if (stringField.includes(',') || stringField.includes('"') || stringField.includes('\n')) {
+                        return `"${stringField.replace(/"/g, '""')}"`;
+                    }
+                    return stringField;
+                }).join(',') + '\n';
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            if (link.download !== undefined) { // Feature detection for download attribute
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', filename);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } else {
+                // Fallback for browsers that don't support the download attribute
+                showMessage('เบราว์เซอร์ของคุณไม่รองรับการดาวน์โหลดไฟล์โดยตรง กรุณาคัดลอกเนื้อหาด้านล่างและบันทึกเป็นไฟล์ .csv', 'info');
+                console.log(csvContent); // Log to console for manual copy
+            }
+        };
+
+
+        // --- Event Listeners for Navigation ---
+        document.getElementById('nav-dashboard').onclick = () => setActiveTab('dashboard');
+        document.getElementById('nav-equipment').onclick = () => setActiveTab('equipment');
+        document.getElementById('nav-my-loans').onclick = () => setActiveTab('my-loans');
+        document.getElementById('nav-admin-loans').onclick = () => setActiveTab('admin-loans');
+        document.getElementById('nav-admin-users').onclick = () => setActiveTab('admin-users');
+
+        // --- Initial Load ---
+        window.onload = () => {
+            // No Firebase initialization needed for local storage
+            if (userIdDisplay) {
+                userIdDisplay.textContent = currentUserId; // Display initial local user ID
+            }
+            setActiveTab('dashboard'); // Set initial active tab
+        };
+    </script>
+</body>
+</html>

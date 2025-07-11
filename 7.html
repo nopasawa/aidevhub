@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบแจ้งซ่อมและช่วยเหลือด้าน IT (IT Helpdesk)</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Google Fonts: Sarabun -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #f8f9fa;
+        }
+        .navbar {
+            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+        }
+        .container {
+            margin-top: 30px;
+            margin-bottom: 30px;
+        }
+        .card {
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,.1);
+        }
+        .card-header {
+            background-color: #0d6efd;
+            color: white;
+            font-weight: 500;
+            border-top-left-radius: 0.75rem;
+            border-top-right-radius: 0.75rem;
+        }
+        .btn-primary {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+        }
+        .table-responsive {
+            margin-top: 20px;
+        }
+        .status-badge {
+            font-size: 0.9em;
+            padding: 0.5em 0.8em;
+        }
+        .action-buttons .btn {
+            margin-right: 5px;
+        }
+        .nav-tabs .nav-link {
+            color: #495057;
+        }
+        .nav-tabs .nav-link.active {
+            color: #0d6efd;
+            border-color: #dee2e6 #dee2e6 #fff;
+            font-weight: 700;
+        }
+        .toast-container {
+            z-index: 1100;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white sticky-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-headset me-2"></i>
+                <strong>IT Helpdesk System</strong>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container">
+        <!-- Tab Navigation -->
+        <ul class="nav nav-tabs" id="myTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="form-tab" data-bs-toggle="tab" data-bs-target="#form-tab-pane" type="button" role="tab" aria-controls="form-tab-pane" aria-selected="true">
+                    <i class="fas fa-edit me-1"></i> แจ้งปัญหา
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="list-tab" data-bs-toggle="tab" data-bs-target="#list-tab-pane" type="button" role="tab" aria-controls="list-tab-pane" aria-selected="false">
+                    <i class="fas fa-list-alt me-1"></i> รายการที่แจ้ง
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content" id="myTabContent">
+            <!-- Form Tab Pane -->
+            <div class="tab-pane fade show active" id="form-tab-pane" role="tabpanel" aria-labelledby="form-tab" tabindex="0">
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <i class="fas fa-file-alt me-2"></i>แบบฟอร์มแจ้งปัญหา
+                    </div>
+                    <div class="card-body p-4">
+                        <form id="ticketForm">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="requesterName" class="form-label">ชื่อผู้แจ้ง</label>
+                                    <input type="text" class="form-control" id="requesterName" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="department" class="form-label">แผนก/ฝ่าย</label>
+                                    <input type="text" class="form-control" id="department" required>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="problemTitle" class="form-label">หัวข้อปัญหา</label>
+                                <input type="text" class="form-control" id="problemTitle" placeholder="เช่น คอมพิวเตอร์เปิดไม่ติด, ปริ้นเตอร์ใช้งานไม่ได้" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="problemDescription" class="form-label">รายละเอียดปัญหา</label>
+                                <textarea class="form-control" id="problemDescription" rows="4" required></textarea>
+                            </div>
+                            <div class="mb-4">
+                                <label for="priority" class="form-label">ระดับความสำคัญ</label>
+                                <select class="form-select" id="priority" required>
+                                    <option value="ปานกลาง">ปานกลาง (Medium)</option>
+                                    <option value="สูง">สูง (High)</option>
+                                    <option value="ด่วน">ด่วน (Urgent)</option>
+                                    <option value="ต่ำ">ต่ำ (Low)</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100 py-2">
+                                <i class="fas fa-paper-plane me-2"></i>ส่งเรื่อง
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ticket List Tab Pane -->
+            <div class="tab-pane fade" id="list-tab-pane" role="tabpanel" aria-labelledby="list-tab" tabindex="0">
+                <div class="card mt-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-tasks me-2"></i>รายการแจ้งปัญหาทั้งหมด</span>
+                        <button id="exportCsvBtn" class="btn btn-sm btn-light">
+                            <i class="fas fa-file-csv me-2"></i>Export to CSV
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>วันที่แจ้ง</th>
+                                        <th>ผู้แจ้ง</th>
+                                        <th>หัวข้อปัญหา</th>
+                                        <th>ความสำคัญ</th>
+                                        <th>สถานะ</th>
+                                        <th class="text-center">จัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ticketList">
+                                    <!-- Ticket rows will be inserted here by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                         <div id="no-data" class="text-center p-5" style="display: none;">
+                            <i class="fas fa-folder-open fa-3x text-muted"></i>
+                            <p class="mt-3 text-muted">ยังไม่มีรายการแจ้งปัญหา</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- Edit Ticket Modal -->
+    <div class="modal fade" id="editTicketModal" tabindex="-1" aria-labelledby="editTicketModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editTicketModalLabel"><i class="fas fa-edit me-2"></i>แก้ไขรายการแจ้งปัญหา</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editTicketForm">
+                        <input type="hidden" id="editTicketId">
+                        <div class="row">
+                            <div class="col-md-6 mb-3"><label for="editRequesterName" class="form-label">ชื่อผู้แจ้ง</label><input type="text" class="form-control" id="editRequesterName" required></div>
+                            <div class="col-md-6 mb-3"><label for="editDepartment" class="form-label">แผนก/ฝ่าย</label><input type="text" class="form-control" id="editDepartment" required></div>
+                        </div>
+                        <div class="mb-3"><label for="editProblemTitle" class="form-label">หัวข้อปัญหา</label><input type="text" class="form-control" id="editProblemTitle" required></div>
+                        <div class="mb-3"><label for="editProblemDescription" class="form-label">รายละเอียดปัญหา</label><textarea class="form-control" id="editProblemDescription" rows="4" required></textarea></div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3"><label for="editPriority" class="form-label">ระดับความสำคัญ</label><select class="form-select" id="editPriority" required><option value="ปานกลาง">ปานกลาง (Medium)</option><option value="สูง">สูง (High)</option><option value="ด่วน">ด่วน (Urgent)</option><option value="ต่ำ">ต่ำ (Low)</option></select></div>
+                            <div class="col-md-6 mb-3"><label for="editStatus" class="form-label">สถานะ</label><select class="form-select" id="editStatus" required><option value="เปิด">เปิด</option><option value="ปิด">ปิด</option></select></div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="submit" form="editTicketForm" class="btn btn-primary"><i class="fas fa-save me-2"></i>บันทึกการเปลี่ยนแปลง</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Ticket Modal -->
+    <div class="modal fade" id="viewTicketModal" tabindex="-1" aria-labelledby="viewTicketModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title" id="viewTicketModalLabel"><i class="fas fa-ticket-alt me-2"></i>รายละเอียดปัญหา</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+                <div class="modal-body" id="viewTicketBody"></div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white"><h5 class="modal-title" id="deleteConfirmModalLabel"><i class="fas fa-exclamation-triangle me-2"></i>ยืนยันการลบ</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button></div>
+                <div class="modal-body"><p>คุณแน่ใจหรือไม่ว่าต้องการลบรายการนี้? การกระทำนี้ไม่สามารถย้อนกลับได้</p></div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button><button type="button" id="confirmDeleteBtn" class="btn btn-danger">ยืนยันการลบ</button></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+      <div id="notificationToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header"><i class="fas fa-check-circle text-success me-2"></i><strong class="me-auto">สำเร็จ</strong><button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button></div>
+        <div class="toast-body" id="notificationMessage"></div>
+      </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const ticketForm = document.getElementById('ticketForm');
+            const ticketList = document.getElementById('ticketList');
+            const exportCsvBtn = document.getElementById('exportCsvBtn');
+            const noDataMessage = document.getElementById('no-data');
+
+            // Modal and Toast elements
+            const editTicketModal = new bootstrap.Modal(document.getElementById('editTicketModal'));
+            const editTicketForm = document.getElementById('editTicketForm');
+            const viewTicketModal = new bootstrap.Modal(document.getElementById('viewTicketModal'));
+            const viewTicketBody = document.getElementById('viewTicketBody');
+            const deleteConfirmModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+            const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+            const notificationToast = new bootstrap.Toast(document.getElementById('notificationToast'));
+            const notificationMessage = document.getElementById('notificationMessage');
+            let ticketIdToDelete = null;
+
+            // Function to show a notification
+            function showNotification(message) {
+                notificationMessage.textContent = message;
+                notificationToast.show();
+            }
+
+            // Handle new ticket form submission
+            ticketForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                addTicket({
+                    id: Date.now(),
+                    requesterName: document.getElementById('requesterName').value,
+                    department: document.getElementById('department').value,
+                    problemTitle: document.getElementById('problemTitle').value,
+                    problemDescription: document.getElementById('problemDescription').value,
+                    priority: document.getElementById('priority').value,
+                    status: 'เปิด',
+                    createdAt: new Date().toLocaleString('th-TH')
+                });
+                ticketForm.reset();
+                showNotification('แจ้งปัญหาสำเร็จ!');
+                new bootstrap.Tab(document.getElementById('list-tab')).show();
+            });
+
+            // Handle edit ticket form submission
+            editTicketForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const ticketId = document.getElementById('editTicketId').value;
+                let tickets = getTickets();
+                const ticketIndex = tickets.findIndex(t => t.id == ticketId);
+                if (ticketIndex > -1) {
+                    tickets[ticketIndex] = {
+                        ...tickets[ticketIndex],
+                        requesterName: document.getElementById('editRequesterName').value,
+                        department: document.getElementById('editDepartment').value,
+                        problemTitle: document.getElementById('editProblemTitle').value,
+                        problemDescription: document.getElementById('editProblemDescription').value,
+                        priority: document.getElementById('editPriority').value,
+                        status: document.getElementById('editStatus').value,
+                    };
+                    saveTickets(tickets);
+                    loadTickets();
+                    editTicketModal.hide();
+                    showNotification('แก้ไขข้อมูลสำเร็จ!');
+                }
+            });
+
+            // Handle delete confirmation
+            confirmDeleteBtn.addEventListener('click', function() {
+                if (ticketIdToDelete !== null) {
+                    let tickets = getTickets();
+                    tickets = tickets.filter(t => t.id !== ticketIdToDelete);
+                    saveTickets(tickets);
+                    loadTickets();
+                    ticketIdToDelete = null;
+                    deleteConfirmModal.hide();
+                    showNotification('ลบรายการสำเร็จ');
+                }
+            });
+            
+            // Handle Export CSV
+            exportCsvBtn.addEventListener('click', exportToCSV);
+
+            // --- Data and Rendering Functions ---
+            function getTickets() { return JSON.parse(localStorage.getItem('helpdeskTickets')) || []; }
+            function saveTickets(tickets) { localStorage.setItem('helpdeskTickets', JSON.stringify(tickets)); }
+            function addTicket(ticket) {
+                const tickets = getTickets();
+                tickets.push(ticket);
+                saveTickets(tickets);
+                loadTickets();
+            }
+
+            function loadTickets() {
+                const tickets = getTickets();
+                ticketList.innerHTML = '';
+                noDataMessage.style.display = tickets.length === 0 ? 'block' : 'none';
+                
+                tickets.sort((a, b) => b.id - a.id).forEach((ticket, index) => {
+                    const priorityClass = { 'ด่วน': 'text-danger fw-bold', 'สูง': 'text-warning fw-bold', 'ปานกลาง': 'text-info', 'ต่ำ': 'text-muted' }[ticket.priority] || '';
+                    const statusBadgeClass = ticket.status === 'เปิด' ? 'bg-success' : 'bg-secondary';
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${index + 1}</td>
+                        <td>${ticket.createdAt}</td>
+                        <td>${ticket.requesterName} (${ticket.department})</td>
+                        <td>${ticket.problemTitle}</td>
+                        <td class="${priorityClass}">${ticket.priority}</td>
+                        <td><span class="badge rounded-pill ${statusBadgeClass} status-badge">${ticket.status}</span></td>
+                        <td class="text-center action-buttons">
+                            <button class="btn btn-sm btn-info" onclick="viewTicket(${ticket.id})" title="ดูรายละเอียด"><i class="fas fa-eye"></i></button>
+                            <button class="btn btn-sm btn-warning" onclick="editTicket(${ticket.id})" title="แก้ไข"><i class="fas fa-edit"></i></button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteTicket(${ticket.id})" title="ลบ"><i class="fas fa-trash"></i></button>
+                        </td>
+                    `;
+                    ticketList.appendChild(row);
+                });
+            }
+
+            // --- Global Functions for Buttons ---
+            window.viewTicket = function(id) {
+                const ticket = getTickets().find(t => t.id === id);
+                if (ticket) {
+                    viewTicketBody.innerHTML = `
+                        <p><strong>ID:</strong> ${ticket.id}</p>
+                        <p><strong>วันที่แจ้ง:</strong> ${ticket.createdAt}</p>
+                        <p><strong>ผู้แจ้ง:</strong> ${ticket.requesterName} (${ticket.department})</p><hr>
+                        <p><strong>หัวข้อปัญหา:</strong> ${ticket.problemTitle}</p>
+                        <p><strong>รายละเอียด:</strong></p>
+                        <p style="white-space: pre-wrap; background-color: #f8f9fa; padding: 10px; border-radius: 5px;">${ticket.problemDescription}</p><hr>
+                        <p><strong>ระดับความสำคัญ:</strong> ${ticket.priority}</p>
+                        <p><strong>สถานะ:</strong> ${ticket.status}</p>`;
+                    viewTicketModal.show();
+                }
+            };
+
+            window.editTicket = function(id) {
+                const ticket = getTickets().find(t => t.id === id);
+                if (ticket) {
+                    document.getElementById('editTicketId').value = ticket.id;
+                    document.getElementById('editRequesterName').value = ticket.requesterName;
+                    document.getElementById('editDepartment').value = ticket.department;
+                    document.getElementById('editProblemTitle').value = ticket.problemTitle;
+                    document.getElementById('editProblemDescription').value = ticket.problemDescription;
+                    document.getElementById('editPriority').value = ticket.priority;
+                    document.getElementById('editStatus').value = ticket.status;
+                    editTicketModal.show();
+                }
+            };
+
+            window.deleteTicket = function(id) {
+                ticketIdToDelete = id;
+                deleteConfirmModal.show();
+            };
+
+            function exportToCSV() {
+                const tickets = getTickets();
+                if (tickets.length === 0) {
+                    showNotification('ไม่มีข้อมูลสำหรับ Export');
+                    return;
+                }
+                const headers = ['ID', 'วันที่แจ้ง', 'ชื่อผู้แจ้ง', 'แผนก', 'หัวข้อปัญหา', 'รายละเอียด', 'ความสำคัญ', 'สถานะ'];
+                const csvContent = [headers.join(','), ...tickets.map(t => [t.id, t.createdAt, `"${t.requesterName}"`, `"${t.department}"`, `"${t.problemTitle}"`, `"${t.problemDescription.replace(/"/g, '""')}"`, t.priority, t.status].join(','))].join('\n');
+                const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `it_helpdesk_export_${new Date().toISOString().slice(0,10)}.csv`;
+                link.click();
+                URL.revokeObjectURL(link.href);
+            }
+
+            // Initial load
+            loadTickets();
+        });
+    </script>
+</body>
+</html>
