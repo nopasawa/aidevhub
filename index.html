@@ -3,230 +3,1337 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <!-- Security Header: Content Security Policy -->
-    <!-- นโยบายนี้ช่วยป้องกันการโจมตีโดยการจำกัดแหล่งที่มาของเนื้อหาที่สามารถโหลดได้ -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.tailwindcss.com; style-src 'self' https://cdn.tailwindcss.com https://fonts.googleapis.com 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com;">
-    
-    <title>AI Dev Store - ตัวอย่าง</title>
-    
-    <!-- Tailwind CSS for styling -->
+    <title>ระบบจัดการคะแนนความประพฤตินักเรียน</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Google Fonts for Thai font -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
-    
-    <style>
-        /* ใช้ฟอนต์ 'Sarabun' กับทั้งหน้าเว็บและตั้งค่าพื้นหลัง */
-        body {
-            font-family: 'Sarabun', sans-serif;
-            background-color: #2c3e50; /* สีพื้นหลังเข้ม */
-            padding: 20px;
-        }
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, doc, setDoc, deleteDoc, collection, query, onSnapshot, updateDoc, getDocs, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"; // Added getDoc
 
-        /* สไตล์สำหรับกล่องคำเตือน */
-        .warning-box {
-            background-color: #fff3cd; /* สีพื้นหลังโทนเหลือง */
-            color: #664d03; /* สีตัวอักษร */
-            border: 1px solid #ffecb5; /* สีขอบ */
-            padding: 1rem 1.5rem;
+        // Global Firebase variables (will be initialized in JS)
+        window.firebaseApp = null;
+        window.db = null;
+        window.auth = null;
+        window.currentUserId = null;
+        window.isAuthReady = false; // Flag to indicate if auth is ready
+        window.studentsCollectionRef = null; // Firestore collection reference for students
+        window.userProfileDocRef = null; // Firestore document reference for user profile
+        window.firebaseStatusDisplay = null; // DOM element for Firebase connection status
+        window.appId = null; // Make appId globally accessible
+        window.loggedInUserProfile = null; // Store logged in user's profile data
+
+        // Firebase Configuration (Hardcoded as per user request)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDaHWi0ljL5EYv1KeIRwrAlfwJ1XXVDG9k",
+            authDomain: "project-9929a.firebaseapp.com",
+            projectId: "project-9929a",
+            storageBucket: "project-9929a.firebasestorage.app",
+            messagingSenderId: "353469663880",
+            appId: "1:353469663880:web:b38fd60dd95c5284182d3d",
+            measurementId: "G-L422Q4ZXN1"
+        };
+
+        // Extract appId from the hardcoded firebaseConfig and make it global
+        window.appId = firebaseConfig.appId.split(':')[1]; 
+
+        // Firebase initialization and authentication
+        window.initializeFirebase = async () => {
+            window.firebaseStatusDisplay = document.getElementById('firebaseStatusDisplay');
+            if (window.firebaseStatusDisplay) {
+                window.firebaseStatusDisplay.textContent = "กำลังเชื่อมต่อ Firebase...";
+            }
+
+            try {
+                if (!firebaseConfig.apiKey) {
+                    console.error("Firebase config is missing API Key. Please ensure firebaseConfig is correctly set.");
+                    if (window.firebaseStatusDisplay) {
+                        window.firebaseStatusDisplay.textContent = "ข้อผิดพลาด: ไม่พบ API Key ของ Firebase";
+                    }
+                    document.getElementById('userIdDisplay').textContent = "ข้อผิดพลาด: ไม่พบ API Key ของ Firebase";
+                    return;
+                }
+
+                window.firebaseApp = initializeApp(firebaseConfig);
+                window.db = getFirestore(window.firebaseApp);
+                window.auth = getAuth(window.firebaseApp);
+
+                // Listen for auth state changes
+                onAuthStateChanged(window.auth, async (user) => { // Made async to await getDoc
+                    if (user) {
+                        window.currentUserId = user.uid;
+                        document.getElementById('userIdDisplay').textContent = `User ID: ${window.currentUserId}`;
+                        // Set Firestore collection/document references for the current user
+                        window.studentsCollectionRef = collection(window.db, `artifacts/${window.appId}/users/${window.currentUserId}/students`);
+                        // Corrected userProfileDocRef to be a document within a profile collection, with userId as doc ID
+                        window.userProfileDocRef = doc(window.db, `artifacts/${window.appId}/users/${window.currentUserId}/profile/${window.currentUserId}`); 
+                        window.isAuthReady = true;
+                        console.log("Firebase Auth Ready. User ID:", window.currentUserId);
+                        console.log("Students Collection Path:", `artifacts/${window.appId}/users/${window.currentUserId}/students`); // Log for debugging
+                        console.log("User Profile Document Path:", `artifacts/${window.appId}/users/${window.currentUserId}/profile/${window.currentUserId}`); // Log for debugging
+
+                        // Fetch logged in user's profile data
+                        try {
+                            const profileSnap = await getDoc(window.userProfileDocRef);
+                            if (profileSnap.exists()) {
+                                window.loggedInUserProfile = profileSnap.data();
+                                document.getElementById('teacherAndClassDisplay').textContent = 
+                                    `ครู: ${window.loggedInUserProfile.teacherName || '-'}, ชั้น: ${window.loggedInUserProfile.className || '-'}`;
+                            } else {
+                                console.warn("User profile document does not exist.");
+                                document.getElementById('teacherAndClassDisplay').textContent = `โปรไฟล์ไม่สมบูรณ์`;
+                                // Optionally, prompt user to complete profile
+                            }
+                        } catch (profileError) {
+                            console.error("Error fetching user profile:", profileError);
+                            document.getElementById('teacherAndClassDisplay').textContent = `ข้อผิดพลาดในการโหลดโปรไฟล์`;
+                        }
+
+
+                        if (window.firebaseStatusDisplay) {
+                            window.firebaseStatusDisplay.textContent = "เชื่อมต่อ Firebase แล้ว";
+                            window.firebaseStatusDisplay.classList.remove('text-red-600');
+                            window.firebaseStatusDisplay.classList.add('text-green-600');
+                        }
+                        // Hide login form, show main app
+                        document.getElementById('authScreen').classList.add('hidden');
+                        document.getElementById('mainApp').classList.remove('hidden');
+                        window.loadStudentsRealtime();
+                        window.populateStudentSelect();
+                    } else {
+                        window.currentUserId = null;
+                        window.isAuthReady = false;
+                        window.loggedInUserProfile = null; // Clear profile on logout
+                        document.getElementById('teacherAndClassDisplay').textContent = ``; // Clear display
+                        console.log("User not authenticated.");
+                        if (window.firebaseStatusDisplay) {
+                            window.firebaseStatusDisplay.textContent = "ไม่ได้เข้าสู่ระบบ";
+                            window.firebaseStatusDisplay.classList.add('text-red-600');
+                            window.firebaseStatusDisplay.classList.remove('text-green-600');
+                        }
+                        // Show login form, hide main app
+                        document.getElementById('authScreen').classList.remove('hidden');
+                        document.getElementById('mainApp').classList.add('hidden');
+                        // Clear student list and select when logged out
+                        document.getElementById('studentList').innerHTML = '';
+                        document.getElementById('behaviorStudentSelect').innerHTML = '<option value="">-- เลือกนักเรียน --</option>';
+                    }
+                });
+
+            } catch (error) {
+                console.error("Error initializing Firebase:", error);
+                if (window.firebaseStatusDisplay) {
+                    window.firebaseStatusDisplay.textContent = `ข้อผิดพลาดในการเริ่มต้น Firebase: ${error.message}`;
+                    window.firebaseStatusDisplay.classList.add('text-red-600');
+                }
+                document.getElementById('userIdDisplay').textContent = `ข้อผิดพลาดในการเริ่มต้น Firebase: ${error.message}`;
+            }
+        };
+
+        // Call initializeFirebase when the script loads
+        window.initializeFirebase();
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+        }
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+        .card {
+            background-color: #fff;
+            border-radius: 0.75rem; /* rounded-xl */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-md */
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .btn-primary {
+            background-color: #4f46e5; /* indigo-600 */
+            color: #fff;
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.5rem; /* rounded-lg */
+            font-weight: 600; /* font-semibold */
+            transition: background-color 0.2s;
+        }
+        .btn-primary:hover {
+            background-color: #4338ca; /* indigo-700 */
+        }
+        .btn-secondary {
+            background-color: #e5e7eb; /* gray-200 */
+            color: #4b5563; /* gray-700 */
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.5rem; /* rounded-lg */
+            font-weight: 600; /* font-semibold */
+            transition: background-color 0.2s;
+        }
+        .btn-secondary:hover {
+            background-color: #d1d5db; /* gray-300 */
+        }
+        .btn-danger {
+            background-color: #ef4444; /* red-500 */
+            color: #fff;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem; /* rounded-md */
+            font-weight: 500; /* font-medium */
+            transition: background-color 0.2s;
+        }
+        .btn-danger:hover {
+            background-color: #dc2626; /* red-600 */
+        }
+        input[type="text"], input[type="number"], input[type="email"], input[type="password"], select, textarea {
+            border: 1px solid #d1d5db; /* gray-300 */
+            border-radius: 0.5rem; /* rounded-lg */
+            padding: 0.75rem 1rem;
+            width: 100%;
+            box-sizing: border-box;
+            margin-top: 0.25rem;
             margin-bottom: 1rem;
-            border-radius: 0.5rem; /* ขอบมน */
+            transition: border-color 0.2s;
+        }
+        input[type="text"]:focus, input[type="number"]:focus, input[type="email"]:focus, input[type="password"]:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #6366f1; /* indigo-500 */
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2); /* ring-indigo-200 */
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb; /* gray-200 */
+        }
+        th {
+            background-color: #f9fafb; /* gray-50 */
+            font-weight: 600;
+            color: #4b5563; /* gray-700 */
+        }
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            visibility: hidden;
+            opacity: 0;
+            transition: visibility 0s, opacity 0.3s;
+        }
+        .modal.show {
+            visibility: visible;
+            opacity: 1;
+        }
+        .modal-content {
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            width: 90%;
+            max-width: 500px;
             text-align: center;
         }
-
-        .warning-box-title {
-            font-weight: 700; /* ตัวหนา */
+        .modal-content h3 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px; /* full rounded */
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .badge-positive {
+            background-color: #dcfce7; /* green-100 */
+            color: #16a34a; /* green-600 */
+        }
+        .badge-negative {
+            background-color: #fee2e2; /* red-100 */
+            color: #dc2626; /* red-600 */
+        }
+        /* Tab specific styles */
+        .tab-button {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem 0.5rem 0 0;
+            cursor: pointer;
+            font-weight: 600;
+            color: #6b7280; /* gray-500 */
+            background-color: #e5e7eb; /* gray-200 */
+            transition: all 0.2s ease-in-out;
+            border-bottom: 2px solid transparent;
+        }
+        .tab-button:hover {
+            background-color: #d1d5db; /* gray-300 */
+            color: #374151; /* gray-700 */
+        }
+        .tab-button.active {
+            background-color: #fff;
+            color: #4f46e5; /* indigo-600 */
+            border-bottom: 2px solid #4f46e5; /* indigo-600 */
+            box-shadow: 0 -2px 5px -1px rgba(0, 0, 0, 0.05);
+            z-index: 1; /* Bring active tab to front */
+        }
+        .tab-content {
+            display: none;
+            padding-top: 1rem; /* Adjust padding to separate from tabs */
+        }
+        .tab-content.active {
             display: block;
-            margin-bottom: 0.5rem;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            visibility: hidden;
+            opacity: 0;
+            transition: visibility 0s, opacity 0.3s;
+        }
+        .loading-overlay.show {
+            visibility: visible;
+            opacity: 1;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #4f46e5;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .flex-col-mobile {
+                flex-direction: column;
+            }
+            .flex-col-mobile > * {
+                width: 100%;
+            }
+            .modal-content {
+                width: 95%;
+                padding: 1.5rem;
+            }
+            .tab-buttons {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .tab-button {
+                border-radius: 0.5rem;
+                margin-bottom: 0.5rem;
+            }
+            .tab-button.active {
+                border-bottom: none;
+                box-shadow: 0 2px 5px -1px rgba(0, 0, 0, 0.05);
+            }
         }
     </style>
 </head>
+<body class="bg-gray-100 min-h-screen p-4">
+    <div class="container">
+        <h1 class="text-3xl font-bold text-center text-indigo-700 mb-8">ระบบจัดการคะแนนความประพฤตินักเรียน</h1>
 
-<body class="bg-gray-100 dark:bg-gray-900">
+        <!-- User ID and Firebase Status Display -->
+        <div class="text-center text-sm text-gray-600 mb-4">
+            <span id="userIdDisplay">กำลังโหลด User ID...</span><br>
+            <span id="firebaseStatusDisplay" class="font-medium">กำลังเชื่อมต่อ Firebase...</span><br>
+            <span id="teacherAndClassDisplay" class="font-medium text-gray-700"></span> <!-- New display for teacher/class -->
+        </div>
 
-    <!-- Container หลักสำหรับจัดเนื้อหาให้อยู่กึ่งกลาง -->
-    <main class="flex items-center justify-center min-h-screen p-4">
-
-        <!-- การ์ดเมนูหลัก (เพิ่ม class 'relative' เพื่อให้รองรับ absolute positioning) -->
-        <div class="relative bg-white dark:bg-gray-800 p-8 sm:p-10 rounded-2xl shadow-2xl text-center w-full max-w-5xl">
+        <!-- Authentication Screen -->
+        <div id="authScreen" class="card max-w-md mx-auto hidden">
+            <h2 class="text-2xl font-semibold text-indigo-600 mb-6 text-center" id="authTitle">เข้าสู่ระบบ</h2>
+            <div id="authError" class="text-red-600 text-sm mb-4 hidden"></div>
+            <div class="mb-4">
+                <label for="authEmail" class="block text-sm font-medium text-gray-700">อีเมล:</label>
+                <input type="email" id="authEmail" placeholder="your@example.com" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+            </div>
+            <div class="mb-4">
+                <label for="authPassword" class="block text-sm font-medium text-gray-700">รหัสผ่าน:</label>
+                <input type="password" id="authPassword" placeholder="รหัสผ่าน" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+            </div>
+            <!-- New fields for registration -->
+            <div id="registerFields" class="hidden">
+                <div class="mb-4">
+                    <label for="authTeacherName" class="block text-sm font-medium text-gray-700">ชื่อครู:</label>
+                    <input type="text" id="authTeacherName" placeholder="เช่น ครูสมศรี" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                </div>
+                <div class="mb-6">
+                    <label for="authClassName" class="block text-sm font-medium text-gray-700">ชั้นเรียน:</label>
+                    <input type="text" id="authClassName" placeholder="เช่น ป.1/1" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                </div>
+            </div>
             
-            <!-- ตัวนับจำนวนผู้เข้าชม (ย้ายมาไว้มุมบนขวา) -->
-            <div id="visitor-counter" class="absolute top-6 right-6 flex items-center text-gray-500 dark:text-gray-400">
-                <!-- ไอคอนรูปตา (View Icon) -->
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-                <span id="count-value" class="font-bold">1</span>
-                <span class="ml-1 text-sm">คน</span>
+            <button id="loginBtn" class="w-full btn-primary mb-3">เข้าสู่ระบบ</button>
+            <button id="registerBtn" class="w-full btn-secondary hidden">ลงทะเบียน</button>
+            <p class="text-center text-sm text-gray-600 mt-4">
+                หากคุณไม่มีบัญชี สามารถ <a href="#" id="toggleRegister" class="text-indigo-600 hover:underline">ลงทะเบียน</a> ได้
+            </p>
+            <p class="text-center text-sm text-gray-600 mt-2 hidden" id="toggleLoginSection">
+                มีบัญชีอยู่แล้ว? <a href="#" id="toggleLogin" class="text-indigo-600 hover:underline">เข้าสู่ระบบ</a>
+            </p>
+        </div>
+
+        <!-- Main Application Content (Hidden until authenticated) -->
+        <div id="mainApp" class="hidden">
+            <div class="text-right mb-4">
+                <button id="logoutBtn" class="btn-secondary">ออกจากระบบ</button>
             </div>
 
-            <!-- ส่วนหัวเรื่อง -->
-            <h1 class="text-3xl sm:text-4xl font-bold mb-8 text-gray-800 dark:text-white">AI Dev Store</h1>
-            
-            <!-- กล่องคำเตือน -->
-            <div class="warning-box">
-                <span class="warning-box-title">ข้อควรระวัง</span>
-                <p>แอปพลิเคชันทั้งหมดที่แสดงอยู่นี้เป็นเพียงระบบจำลอง (Demo) เพื่อใช้ในการนำเสนอเท่านั้น ไม่ได้มีไว้สำหรับใช้งานจริง <strong>กรุณาอย่ากรอกข้อมูลส่วนบุคคลหรือข้อมูลสำคัญใดๆ ของท่านลงในระบบ</strong></p>
-            </div>
-            
-            <!-- ปุ่มลิงก์ TikTok -->
-            <div class="my-6">
-                <a href="https://www.tiktok.com/@ai.devhub?is_from_webapp=1&sender_device=pc" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center gap-2 px-6 py-3 font-semibold text-white bg-black rounded-lg shadow-md transition-transform transform hover:scale-105 hover:bg-gray-800">
-                    <!-- ไอคอน TikTok (SVG) -->
-                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.01-1.58-.01-3.2-.01-4.8 0-3.51-2.9-6.39-6.41-6.39-3.52 0-6.4 2.88-6.4 6.4s2.88 6.4 6.4 6.4c.04-1.63.04-3.27.05-4.91l-4.03-.01v-4.03c1.38.01 2.75.01 4.12.02z"></path></svg>
-                    <span>ติดตาม AI Dev Hub บน TikTok</span>
-                </a>
+            <!-- Tab Navigation -->
+            <div class="flex flex-wrap justify-center mb-4 relative z-0 tab-buttons">
+                <button id="homeTabBtn" class="tab-button active">หน้าแรก</button>
+                <button id="addStudentTabBtn" class="tab-button">เพิ่มนักเรียนใหม่</button>
+                <button id="recordBehaviorTabBtn" class="tab-button">บันทึกความประพฤติ</button>
             </div>
 
+            <!-- Home Tab Content (Student List Section) -->
+            <div id="homeTabContent" class="card tab-content active">
+                <h2 class="text-xl font-semibold text-indigo-600 mb-4">รายชื่อนักเรียนและคะแนน</h2>
+                <div class="mb-4 flex flex-col md:flex-row gap-4">
+                    <input type="text" id="searchStudent" placeholder="ค้นหานักเรียนด้วยรหัสหรือชื่อ..." class="flex-grow rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    <select id="sortStudents" class="rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <option value="score-desc">เรียงตามคะแนน (มากไปน้อย)</option>
+                        <option value="score-asc">เรียงตามคะแนน (น้อยไปมาก)</option>
+                        <option value="name-asc">เรียงตามชื่อ (ก-ฮ)</option>
+                        <option value="name-desc">เรียงตามชื่อ (ฮ-ก)</option>
+                    </select>
+                </div>
+                <div class="overflow-x-auto rounded-lg shadow-sm border border-gray-200">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">รหัสนักเรียน</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ชื่อนักเรียน</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ชื่อครู</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ชั้นเรียน</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">คะแนนรวม</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">การจัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentList" class="bg-white divide-y divide-gray-200">
+                            <!-- Student rows will be inserted here by JS -->
+                        </tbody>
+                    </table>
+                </div>
+                <button id="clearAllDataBtn" class="mt-6 btn-danger w-full md:w-auto">ล้างข้อมูลทั้งหมด</button>
+            </div>
 
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6">
-                
-                <a href="1.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-blue-500 dark:hover:bg-blue-600 hover:shadow-xl transform hover:-translate-y-1">
-                    <div class="flex flex-col items-center justify-center h-full">                                  
-                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">แอปพลิเคชันจัดการห้องพัก</p>
+            <!-- Add Student Tab Content -->
+            <div id="addStudentTabContent" class="card tab-content">
+                <h2 class="text-xl font-semibold text-indigo-600 mb-4">เพิ่มนักเรียนใหม่</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="studentId" class="block text-sm font-medium text-gray-700">รหัสนักเรียน:</label>
+                        <input type="text" id="studentId" placeholder="เช่น S001" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                     </div>
-                </a>
-                
-                <a href="2.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-green-500 dark:hover:bg-green-600 hover:shadow-xl transform hover:-translate-y-1">
-                    <div class="flex flex-col items-center justify-center h-full">                                  
-                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">แอพบันทึกโอที (OT Tracker)</p>
+                    <div>
+                        <label for="studentName" class="block text-sm font-medium text-gray-700">ชื่อนักเรียน:</label>
+                        <input type="text" id="studentName" placeholder="เช่น สมชาย ใจดี" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                     </div>
-                </a>
+                    <!-- Removed Teacher Name and Class Name inputs from here -->
+                </div>
+                <button id="addStudentBtn" class="mt-4 w-full md:w-auto btn-primary">เพิ่มนักเรียน</button>
+            </div>
 
-                <a href="3.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
-                    <div class="flex flex-col items-center justify-center h-full">                                  
-                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">ระบบยืมคืนอุปกรณ์</p>
+            <!-- Record Behavior Tab Content -->
+            <div id="recordBehaviorTabContent" class="card tab-content">
+                <h2 class="text-xl font-semibold text-indigo-600 mb-4">บันทึกความประพฤติ</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="behaviorStudentSelect" class="block text-sm font-medium text-gray-700">เลือกนักเรียน:</label>
+                        <select id="behaviorStudentSelect" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            <option value="">-- เลือกนักเรียน --</option>
+                        </select>
                     </div>
-                </a>
+                    <div>
+                        <label for="behaviorType" class="block text-sm font-medium text-gray-700">ประเภทความประพฤติ:</label>
+                        <select id="behaviorType" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            <option value="positive">ความดี (+)</option>
+                            <option value="negative">ความผิด (-)</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label for="behaviorPoints" class="block text-sm font-medium text-gray-700">คะแนน:</label>
+                    <input type="number" id="behaviorPoints" placeholder="เช่น 5 หรือ -5" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label for="behaviorDescriptionChoice" class="block text-sm font-medium text-gray-700">เลือกรายละเอียด:</label>
+                    <select id="behaviorDescriptionChoice" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <option value="">-- เลือก หรือ พิมพ์เอง --</option>
+                        <option value="แต่งกายถูกระเบียบ">แต่งกายถูกระเบียบ</option>
+                        <option value="เก็บขยะ">เก็บขยะ</option>
+                        <option value="ช่วยเหลือเพื่อน / ครู">ช่วยเหลือเพื่อน / ครู</option>
+                        <option value="มารยาทดี">มารยาทดี</option>
+                        <option value="ตั้งใจเรียน">ตั้งใจเรียน</option>
+                        <option value="ส่งงานตรงเวลา">ส่งงานตรงเวลา</option>
+                        <option value="มาโรงเรียนสาย">มาโรงเรียนสาย</option>
+                        <option value="ไม่ส่งการบ้าน">ไม่ส่งการบ้าน</option>
+                        <option value="ทะเลาะวิวาท">ทะเลาะวิวาท</option>
+                        <option value="ขาดเรียน">ขาดเรียน</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="behaviorDescriptionCustom" class="block text-sm font-medium text-gray-700">รายละเอียดเพิ่มเติม (ไม่บังคับ):</label>
+                    <textarea id="behaviorDescriptionCustom" rows="3" placeholder="รายละเอียดความประพฤติเพิ่มเติม" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
+                </div>
+                <button id="recordBehaviorBtn" class="mt-4 w-full md:w-auto btn-primary">บันทึกความประพฤติ</button>
+            </div>
+        </div> <!-- End of mainApp -->
 
-                <a href="4.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
-                    <div class="flex flex-col items-center justify-center h-full">                                  
-                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">ระบบยืม-คืนอุปกรณ์ 1</p>
-                    </div>
-                </a>
-
-                <a href="5.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
-                    <div class="flex flex-col items-center justify-center h-full">                                  
-                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">ระบบลางาน (Leave Request System)</p>
-                    </div>
-                </a>
-
-                <a href="6.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
-                    <div class="flex flex-col items-center justify-center h-full">
-                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">ระบบลางาน (Leave Request System)</p>
-                    </div>
-                </a>
-                <a href="7.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
-                    <div class="flex flex-col items-center justify-center h-full">
-                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">IT Helpdesk Application</p>
-                    </div>
-                </a>
-                <a href="8.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
-                    <div class="flex flex-col items-center justify-center h-full">
-                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">จองโต๊ะร้านอาหาร</p>
-                    </div>
-                </a>
-                <a href="9.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
-                    <div class="flex flex-col items-center justify-center h-full">
-                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">ร้านค้าออนไลน์</p>
-                    </div>
-                </a>
-                <a href="10.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
-                    <div class="flex flex-col items-center justify-center h-full">
-                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">เครื่องคำนวณอัตราการให้ยาฉีด</p>
-                    </div>
-                </a>
-                <a href="11.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
-                    <div class="flex flex-col items-center justify-center h-full">
-                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">เว็บแอปวางแผนล่วงหน้า (ส่งออก CSV ได้)</p>
-                    </div>
-                </a>
-                <a href="12.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
-                    <div class="flex flex-col items-center justify-center h-full">
-                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">เว็บฟอร์มสั่งซื้อสินค้า (พร้อมหน้ารายการสั่งซื้อ)</p>
-                    </div>
-                </a>
-                <a href="13.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
-                    <div class="flex flex-col items-center justify-center h-full">
-                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">แอปแจ้งซ่อมเครื่องจักร</p>
-                    </div>
-                </a>
-                <a href="14.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
-                    <div class="flex flex-col items-center justify-center h-full">
-                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">แอปคำนวณเงินเดือนพนักงาน (Payroll Calculator)</p>
-                    </div>
-                </a>
-                <a href="15.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
-                    <div class="flex flex-col items-center justify-center h-full">
-                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">แอปพลิเคชันคำนวณค่าน้ำประปา</p>
-                    </div>
-                </a>
-                <a href="16.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
-                    <div class="flex flex-col items-center justify-center h-full">
-                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">แอปวางแผนการเงิน</p>
-                    </div>
-                </a>
-                <a href="17.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
-                    <div class="flex flex-col items-center justify-center h-full">
-                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">ระบบ Kiosk ขายของในโรงเรียน</p>
-                    </div>
-                </a>
-                <a href="18.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
-                    <div class="flex flex-col items-center justify-center h-full">
-                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">ระบบจัดการเงินห้องเรียน (Classroom Fund Manager)</p>
-                    </div>
-                </a>
-                <a href="19.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
-                    <div class="flex flex-col items-center justify-center h-full">
-                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">ระบบจัดซื้อจัดจ้าง</p>
-                    </div>
-                </a>
-                <a href="20.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
-                    <div class="flex flex-col items-center justify-center h-full">
-                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">ระบบออมเงินอัจฉริยะ</p>
-                    </div>
-                </a>
-                <a href="21.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
-                    <div class="flex flex-col items-center justify-center h-full">
-                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">แอปเบิกจ่ายวัสดุ</p>
-                    </div>
-                </a>
-                                <a href="22.html" class="group block rounded-xl bg-gray-100 dark:bg-gray-700 p-4 text-center shadow-md transition-all duration-300 hover:bg-purple-500 dark:hover:bg-purple-600 hover:shadow-xl transform hover:-translate-y-1">
-                    <div class="flex flex-col items-center justify-center h-full">
-                        <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-white transition-colors">GPS Tracking</p>
-                    </div>
-                </a>
+        <!-- Individual Student Report Modal -->
+        <div id="studentReportModal" class="modal">
+            <div class="modal-content">
+                <h3 id="reportStudentName" class="text-xl font-bold text-indigo-700 mb-4"></h3>
+                <p class="text-lg font-semibold mb-2">ชื่อครู: <span id="reportTeacherName" class="text-gray-700"></span></p>
+                <p class="text-lg font-semibold mb-4">ชั้นเรียน: <span id="reportClassName" class="text-gray-700"></span></p>
+                <p class="text-lg font-semibold mb-4">คะแนนรวม: <span id="reportTotalScore" class="text-indigo-600"></span></p>
+                <div class="overflow-x-auto max-h-96">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">วันที่</th>
+                                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ประเภท</th>
+                                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">คะแนน</th>
+                                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">รายละเอียด</th>
+                                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ลบ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reportBehaviorList" class="bg-white divide-y divide-gray-200">
+                            <!-- Behavior records will be inserted here by JS -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="modal-buttons">
+                    <button id="closeReportModalBtn" class="btn-secondary">ปิด</button>
+                </div>
             </div>
         </div>
-    </main>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // สร้าง key สำหรับเก็บค่าใน localStorage
-            const counterKey = 'myPageVisitorCount';
+        <!-- Custom Confirmation Modal -->
+        <div id="confirmationModal" class="modal">
+            <div class="modal-content">
+                <h3 id="confirmationMessage" class="text-xl font-bold text-gray-800 mb-4"></h3>
+                <div class="modal-buttons">
+                    <button id="confirmYesBtn" class="btn-danger">ใช่</button>
+                    <button id="confirmNoBtn" class="btn-secondary">ไม่</button>
+                </div>
+            </div>
+        </div>
 
-            // ตรวจสอบว่ามีค่า counter ใน localStorage หรือไม่
-            let count = localStorage.getItem(counterKey);
+        <!-- Loading Overlay -->
+        <div id="loadingOverlay" class="loading-overlay">
+            <div class="spinner"></div>
+        </div>
 
-            if (count === null) {
-                // ถ้ายังไม่มี (เป็นการเข้าชมครั้งแรก) ให้ตั้งค่าเป็น 1
-                count = 1;
-            } else {
-                // ถ้ามีอยู่แล้ว ให้แปลงเป็นตัวเลขแล้วบวกเพิ่ม 1
-                count = parseInt(count, 10) + 1;
+    </div>
+
+    <script type="module">
+        // Import Firebase functions
+        import { doc, setDoc, deleteDoc, collection, query, onSnapshot, updateDoc, getDocs, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+
+        // DOM Elements
+        const studentIdInput = document.getElementById('studentId');
+        const studentNameInput = document.getElementById('studentName');
+        const addStudentBtn = document.getElementById('addStudentBtn');
+        const behaviorStudentSelect = document.getElementById('behaviorStudentSelect');
+        const behaviorTypeSelect = document.getElementById('behaviorType');
+        const behaviorPointsInput = document.getElementById('behaviorPoints');
+        const behaviorDescriptionChoice = document.getElementById('behaviorDescriptionChoice'); // New
+        const behaviorDescriptionCustom = document.getElementById('behaviorDescriptionCustom'); // Renamed from behaviorDescriptionInput
+        const recordBehaviorBtn = document.getElementById('recordBehaviorBtn');
+        const studentListTableBody = document.getElementById('studentList');
+        const searchStudentInput = document.getElementById('searchStudent');
+        const sortStudentsSelect = document.getElementById('sortStudents');
+        const clearAllDataBtn = document.getElementById('clearAllDataBtn');
+
+        const studentReportModal = document.getElementById('studentReportModal');
+        const reportStudentName = document.getElementById('reportStudentName');
+        const reportTeacherName = document.getElementById('reportTeacherName'); 
+        const reportClassName = document.getElementById('reportClassName');     
+        const reportTotalScore = document.getElementById('reportTotalScore');
+        const reportBehaviorList = document.getElementById('reportBehaviorList');
+        const closeReportModalBtn = document.getElementById('closeReportModalBtn');
+
+        const confirmationModal = document.getElementById('confirmationModal');
+        const confirmationMessage = document.getElementById('confirmationMessage');
+        const confirmYesBtn = document.getElementById('confirmYesBtn');
+        const confirmNoBtn = document.getElementById('confirmNoBtn');
+
+        const loadingOverlay = document.getElementById('loadingOverlay');
+
+        // Tab elements
+        const homeTabBtn = document.getElementById('homeTabBtn');
+        const addStudentTabBtn = document.getElementById('addStudentTabBtn');
+        const recordBehaviorTabBtn = document.getElementById('recordBehaviorTabBtn');
+        const homeTabContent = document.getElementById('homeTabContent');
+        const addStudentTabContent = document.getElementById('addStudentTabContent');
+        const recordBehaviorTabContent = document.getElementById('recordBehaviorTabContent');
+
+        // Auth elements
+        const authScreen = document.getElementById('authScreen');
+        const mainApp = document.getElementById('mainApp');
+        const authTitle = document.getElementById('authTitle');
+        const authEmailInput = document.getElementById('authEmail');
+        const authPasswordInput = document.getElementById('authPassword');
+        const authTeacherNameInput = document.getElementById('authTeacherName'); 
+        const authClassNameInput = document.getElementById('authClassName');     
+        const registerFields = document.getElementById('registerFields');        
+        const loginBtn = document.getElementById('loginBtn');
+        const registerBtn = document.getElementById('registerBtn');
+        const toggleRegisterLink = document.getElementById('toggleRegister');
+        const toggleLoginLink = document.getElementById('toggleLogin');
+        const toggleLoginSection = document.getElementById('toggleLoginSection');
+        const authErrorDisplay = document.getElementById('authError');
+        const logoutBtn = document.getElementById('logoutBtn');
+
+        // New display element for teacher and class
+        const teacherAndClassDisplay = document.getElementById('teacherAndClassDisplay');
+
+
+        let confirmAction = null; // To store the function to execute on confirmation
+
+        // Local cache for students data (updated by Firestore listener)
+        let students = {};
+
+        // --- Utility Functions ---
+
+        /**
+         * Shows the loading overlay.
+         */
+        function showLoading() {
+            loadingOverlay.classList.add('show');
+        }
+
+        /**
+         * Hides the loading overlay.
+         */
+        function hideLoading() {
+            loadingOverlay.classList.remove('show');
+        }
+
+        /**
+         * Shows a custom confirmation modal.
+         * @param {string} message - The message to display.
+         * @param {function} onConfirm - Function to call if 'Yes' is clicked.
+         * @param {string} yesText - Text for the Yes button (default: 'ใช่')
+         * @param {string} noText - Text for the No button (default: 'ไม่')
+         * @param {boolean} showYesButton - Whether to show the Yes button (default: true)
+         */
+        function showConfirmationModal(message, onConfirm, yesText = 'ใช่', noText = 'ไม่', showYesButton = true) {
+            confirmationMessage.textContent = message;
+            confirmAction = onConfirm;
+            confirmYesBtn.textContent = yesText;
+            confirmNoBtn.textContent = noText;
+            confirmYesBtn.style.display = showYesButton ? 'inline-block' : 'none';
+            confirmationModal.classList.add('show');
+        }
+
+        /**
+         * Hides the custom confirmation modal.
+         */
+        function hideConfirmationModal() {
+            confirmationModal.classList.remove('show');
+            confirmAction = null;
+            // Reset button texts and visibility to defaults
+            confirmYesBtn.textContent = 'ใช่';
+            confirmNoBtn.textContent = 'ไม่';
+            confirmYesBtn.style.display = 'inline-block';
+        }
+
+        /**
+         * Displays an authentication error message.
+         * @param {string} message - The error message to display.
+         */
+        function showAuthError(message) {
+            authErrorDisplay.textContent = message;
+            authErrorDisplay.classList.remove('hidden');
+        }
+
+        /**
+         * Clears the authentication error message.
+         */
+        function clearAuthError() {
+            authErrorDisplay.textContent = '';
+            authErrorDisplay.classList.add('hidden');
+        }
+
+        // --- Tab Management Functions ---
+
+        /**
+         * Switches between tabs.
+         * @param {string} tabId - The ID of the tab content to show.
+         */
+        function showTab(tabId) {
+            // Only switch tabs if the user is authenticated
+            if (!window.isAuthReady) {
+                showConfirmationModal('กรุณาเข้าสู่ระบบก่อนใช้งาน', () => {}, 'ตกลง', '', false);
+                return;
             }
 
-            // บันทึกค่าใหม่ลงใน localStorage
-            localStorage.setItem(counterKey, count);
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
 
-            // แสดงผลค่าใน element ที่มี id="count-value"
-            document.getElementById('count-value').textContent = count;
+            // Deactivate all tab buttons
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active');
+            });
+
+            // Show the selected tab content
+            document.getElementById(tabId).classList.add('active');
+
+            // Activate the corresponding tab button
+            if (tabId === 'homeTabContent') {
+                homeTabBtn.classList.add('active');
+                renderStudents(); // Re-render students when home tab is active
+            } else if (tabId === 'addStudentTabContent') {
+                addStudentTabBtn.classList.add('active');
+            } else if (tabId === 'recordBehaviorTabContent') {
+                recordBehaviorTabBtn.classList.add('active');
+            }
+        }
+
+        // --- Authentication Functions ---
+
+        /**
+         * Handles user login.
+         */
+        async function loginUser() {
+            const email = authEmailInput.value.trim();
+            const password = authPasswordInput.value.trim();
+            clearAuthError();
+
+            if (!email || !password) {
+                showAuthError('กรุณากรอกอีเมลและรหัสผ่าน');
+                return;
+            }
+
+            showLoading();
+            try {
+                await signInWithEmailAndPassword(window.auth, email, password);
+                // onAuthStateChanged listener will handle UI update
+            } catch (error) {
+                console.error("Login error:", error);
+                let errorMessage = 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ';
+                if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+                    errorMessage = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
+                } else if (error.code === 'auth/invalid-email') {
+                    errorMessage = 'รูปแบบอีเมลไม่ถูกต้อง';
+                }
+                showAuthError(errorMessage);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        /**
+         * Handles user registration.
+         */
+        async function registerUser() {
+            const email = authEmailInput.value.trim();
+            const password = authPasswordInput.value.trim();
+            const teacherName = authTeacherNameInput.value.trim(); 
+            const className = authClassNameInput.value.trim();     
+            clearAuthError();
+
+            if (!email || !password || !teacherName || !className) {
+                showAuthError('กรุณากรอกอีเมล รหัสผ่าน ชื่อครู และชั้นเรียนให้ครบถ้วน');
+                return;
+            }
+
+            if (password.length < 6) {
+                showAuthError('รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร');
+                return;
+            }
+
+            showLoading();
+            try {
+                const userCredential = await createUserWithEmailAndPassword(window.auth, email, password);
+                const user = userCredential.user;
+
+                // Save additional user profile data to Firestore
+                if (window.db && user && user.uid && window.appId) { 
+                    // Corrected userProfileRef path
+                    const userProfileRef = doc(window.db, `artifacts/${window.appId}/users/${user.uid}/profile/${user.uid}`);
+                    await setDoc(userProfileRef, {
+                        email: email,
+                        teacherName: teacherName,
+                        className: className,
+                        createdAt: new Date().toISOString()
+                    });
+                    console.log("User profile saved to Firestore.");
+                } else {
+                    console.warn("Firestore, user UID, or appId not available to save profile.");
+                    // Provide a more specific error if profile saving fails
+                    showAuthError('บัญชีผู้ใช้ถูกสร้างแล้ว แต่เกิดข้อผิดพลาดในการบันทึกข้อมูลโปรไฟล์. โปรดตรวจสอบการเชื่อมต่อและกฎ Firestore.');
+                }
+
+                showConfirmationModal('ลงทะเบียนสำเร็จ! คุณสามารถเข้าสู่ระบบได้แล้ว', () => {
+                    // Automatically switch to login form after successful registration
+                    authTitle.textContent = 'เข้าสู่ระบบ';
+                    loginBtn.classList.remove('hidden');
+                    registerBtn.classList.add('hidden');
+                    toggleRegisterLink.classList.remove('hidden');
+                    toggleLoginSection.classList.add('hidden');
+                    registerFields.classList.add('hidden'); // Hide new fields
+                    clearAuthError();
+                    authEmailInput.value = email; // Pre-fill email for login
+                    authPasswordInput.value = ''; // Clear password
+                }, 'ตกลง', '', false);
+                
+            } catch (error) {
+                console.error("Register error:", error);
+                let errorMessage = 'เกิดข้อผิดพลาดในการลงทะเบียน';
+                if (error.code === 'auth/email-already-in-use') {
+                    errorMessage = 'อีเมลนี้ถูกใช้ไปแล้ว';
+                } else if (error.code === 'auth/invalid-email') {
+                    errorMessage = 'รูปแบบอีเมลไม่ถูกต้อง';
+                } else if (error.code === 'auth/weak-password') {
+                    errorMessage = 'รหัสผ่านอ่อนเกินไป (ต้องมีอย่างน้อย 6 ตัวอักษร)';
+                } else if (error.code === 'permission-denied') { // Specific check for Firestore permission error
+                    errorMessage = 'เกิดข้อผิดพลาดในการบันทึกข้อมูลโปรไฟล์. บัญชีผู้ใช้ถูกสร้างแล้ว. โปรดตรวจสอบกฎ Firestore สำหรับเอกสารโปรไฟล์.';
+                }
+                showAuthError(errorMessage);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        /**
+         * Handles user logout.
+         */
+        async function logoutUser() {
+            showConfirmationModal('คุณแน่ใจหรือไม่ที่จะออกจากระบบ?', async () => {
+                showLoading();
+                try {
+                    await signOut(window.auth);
+                    hideConfirmationModal();
+                    // onAuthStateChanged listener will handle UI update
+                } catch (error) {
+                    console.error("Logout error:", error);
+                    showConfirmationModal(`เกิดข้อผิดพลาดในการออกจากระบบ: ${error.message}`, () => {}, 'ตกลง', '', false);
+                } finally {
+                    hideLoading();
+                }
+            });
+        }
+
+        // --- Firestore Data Management Functions ---
+
+        /**
+         * Loads student data in real-time using onSnapshot.
+         */
+        window.loadStudentsRealtime = () => {
+            if (!window.isAuthReady || !window.studentsCollectionRef) {
+                console.log("Firebase not ready or studentsCollectionRef not set.");
+                // If not authenticated, clear data and do not set up listener
+                students = {};
+                renderStudents();
+                populateStudentSelect();
+                return;
+            }
+
+            showLoading();
+            onSnapshot(window.studentsCollectionRef, (snapshot) => {
+                const updatedStudents = {};
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    // Ensure behaviors array is always present and parsed if stored as string
+                    if (data.behaviors && typeof data.behaviors === 'string') {
+                        try {
+                            data.behaviors = JSON.parse(data.behaviors);
+                        } catch (e) {
+                            console.error("Error parsing behaviors for student:", data.id, e);
+                            data.behaviors = []; // Default to empty if parsing fails
+                            showConfirmationModal(`ข้อผิดพลาดในการโหลดข้อมูลความประพฤติของนักเรียน ${data.name} (ID: ${data.id})`, () => {}, 'ตกลง', '', false);
+                        }
+                    } else if (!data.behaviors) {
+                        data.behaviors = [];
+                    }
+                    updatedStudents[data.id] = data;
+                });
+                students = updatedStudents;
+                renderStudents();
+                populateStudentSelect();
+                hideLoading();
+                console.log("Students data updated from Firestore.");
+            }, (error) => {
+                console.error("Error fetching students in real-time:", error);
+                hideLoading();
+                // More specific error message for permissions
+                if (error.code === 'permission-denied') {
+                    //showConfirmationModal(`ข้อผิดพลาดในการโหลดข้อมูลนักเรียน: คุณไม่มีสิทธิ์เข้าถึง. โปรดตรวจสอบกฎ Firestore.`, () => {}, 'ตกลง', '', false);
+                } else {
+                    //showConfirmationModal(`ข้อผิดพลาดในการโหลดข้อมูลนักเรียน: ${error.message}. โปรดตรวจสอบการเชื่อมต่อและกฎ Firestore.`, () => {}, 'ตกลง', '', false);
+                }
+            });
+        };
+
+        /**
+         * Adds a new student to Firestore.
+         */
+        async function addStudent() {
+            if (!window.isAuthReady || !window.studentsCollectionRef || !window.loggedInUserProfile) {
+                showConfirmationModal('กรุณาเข้าสู่ระบบและตรวจสอบโปรไฟล์ของคุณก่อนใช้งาน', () => {}, 'ตกลง', '', false);
+                return;
+            }
+
+            const studentId = studentIdInput.value.trim().toUpperCase();
+            const studentName = studentNameInput.value.trim();
+            // Get teacherName and className from loggedInUserProfile
+            const teacherName = window.loggedInUserProfile.teacherName || ''; 
+            const className = window.loggedInUserProfile.className || '';     
+
+            if (!studentId || !studentName) {
+                showConfirmationModal('กรุณากรอกรหัสนักเรียนและชื่อนักเรียนให้ครบถ้วน', () => {}, 'ตกลง', '', false);
+                return;
+            }
+            // Also check if teacherName and className are available from profile
+            if (!teacherName || !className) {
+                showConfirmationModal('ไม่พบข้อมูลชื่อครูหรือชั้นเรียนในโปรไฟล์ของคุณ. โปรดลงทะเบียนใหม่หรือติดต่อผู้ดูแลระบบ.', () => {}, 'ตกลง', '', false);
+                return;
+            }
+
+
+            if (students[studentId]) {
+                showConfirmationModal('รหัสนักเรียนนี้มีอยู่แล้ว กรุณาใช้รหัสอื่น', () => {}, 'ตกลง', '', false);
+                return;
+            }
+
+            showLoading();
+            try {
+                await setDoc(doc(window.studentsCollectionRef, studentId), {
+                    id: studentId,
+                    name: studentName,
+                    teacherName: teacherName, // Use from logged-in user's profile
+                    className: className,     // Use from logged-in user's profile
+                    behaviors: JSON.stringify([]) 
+                });
+                studentIdInput.value = '';
+                studentNameInput.value = '';
+                showConfirmationModal('เพิ่มนักเรียนสำเร็จ!', () => {}, 'ตกลง', '', false);
+            } catch (e) {
+                console.error("Error adding student:", e);
+                showConfirmationModal(`เกิดข้อผิดพลาดในการเพิ่มนักเรียน: ${e.message}. โปรดตรวจสอบกฎ Firestore.`, () => {}, 'ตกลง', '', false);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        /**
+         * Deletes a student and all their records from Firestore.
+         * @param {string} studentId - The ID of the student to delete.
+         */
+        async function deleteStudent(studentId) {
+            if (!window.isAuthReady || !window.studentsCollectionRef) {
+                showConfirmationModal('กรุณาเข้าสู่ระบบก่อนใช้งาน', () => {}, 'ตกลง', '', false);
+                return;
+            }
+
+            showConfirmationModal(`คุณแน่ใจหรือไม่ที่จะลบนักเรียน ${students[studentId].name} (ID: ${studentId}) และข้อมูลทั้งหมด?`, async () => {
+                showLoading();
+                try {
+                    await deleteDoc(doc(window.studentsCollectionRef, studentId));
+                    hideConfirmationModal();
+                } catch (e) {
+                    console.error("Error deleting student:", e);
+                    showConfirmationModal(`เกิดข้อผิดพลาดในการลบนักเรียน: ${e.message}. โปรดตรวจสอบกฎ Firestore.`, () => {}, 'ตกลง', '', false);
+                } finally {
+                    hideLoading();
+                }
+            });
+        }
+
+        /**
+         * Records a new behavior incident for a student in Firestore.
+         * @param {string} studentId - The ID of the student.
+         * @param {string} behaviorId - The ID of the behavior record to delete.
+         */
+        async function recordBehavior() {
+            if (!window.isAuthReady || !window.studentsCollectionRef) {
+                showConfirmationModal('กรุณาเข้าสู่ระบบก่อนใช้งาน', () => {}, 'ตกลง', '', false);
+                return;
+            }
+
+            const studentId = behaviorStudentSelect.value;
+            const behaviorType = behaviorTypeSelect.value;
+            let points = parseInt(behaviorPointsInput.value);
+            // Determine description from choice or custom input
+            const descriptionChoice = behaviorDescriptionChoice.value;
+            const descriptionCustom = behaviorDescriptionCustom.value.trim();
+            const description = descriptionChoice || descriptionCustom; // Prioritize choice if selected, otherwise use custom
+
+
+            if (!studentId || isNaN(points) || !description) { // Description is now optional via custom field
+                showConfirmationModal('กรุณาเลือกนักเรียน กรอกคะแนน และรายละเอียด (เลือกหรือพิมพ์เอง) ให้ครบถ้วน', () => {}, 'ตกลง', '', false);
+                return;
+            }
+
+            // Ensure points are positive for 'positive' type and negative for 'negative' type
+            if (behaviorType === 'positive' && points < 0) {
+                points = Math.abs(points);
+            } else if (behaviorType === 'negative' && points > 0) {
+                points = -Math.abs(points);
+            }
+
+            const student = students[studentId];
+            if (student) {
+                showLoading();
+                try {
+                    const currentBehaviors = student.behaviors || []; // Ensure it's an array
+                    const behaviorId = `b${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+                    currentBehaviors.push({
+                        id: behaviorId,
+                        type: behaviorType,
+                        points: points,
+                        description: description, // Use the determined description
+                        date: new Date().toLocaleString('th-TH', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        })
+                    });
+
+                    // Update the student document in Firestore
+                    await updateDoc(doc(window.studentsCollectionRef, studentId), {
+                        behaviors: JSON.stringify(currentBehaviors) // Store as JSON string
+                    });
+
+                    behaviorPointsInput.value = '';
+                    behaviorDescriptionChoice.value = ''; // Clear choice
+                    behaviorDescriptionCustom.value = ''; // Clear custom
+                    showConfirmationModal('บันทึกความประพฤติสำเร็จ!', () => {}, 'ตกลง', '', false);
+                } catch (e) {
+                    console.error("Error recording behavior:", e);
+                    showConfirmationModal(`เกิดข้อผิดพลาดในการบันทึกความประพฤติ: ${e.message}. โปรดตรวจสอบกฎ Firestore.`, () => {}, 'ตกลง', '', false);
+                } finally {
+                    hideLoading();
+                }
+            });
+        }
+
+        /**
+         * Deletes a specific behavior record for a student from Firestore.
+         * @param {string} studentId - The ID of the student.
+         * @param {string} behaviorId - The ID of the behavior record to delete.
+         */
+        async function deleteBehavior(studentId, behaviorId) {
+            if (!window.isAuthReady || !window.studentsCollectionRef) {
+                showConfirmationModal('กรุณาเข้าสู่ระบบก่อนใช้งาน', () => {}, 'ตกลง', '', false);
+                return;
+            }
+
+            showConfirmationModal('คุณแน่ใจหรือไม่ที่จะลบรายการความประพฤตินี้?', async () => {
+                showLoading();
+                try {
+                    const student = students[studentId];
+                    if (student) {
+                        const updatedBehaviors = (student.behaviors || []).filter(b => b.id !== behaviorId);
+                        await updateDoc(doc(window.studentsCollectionRef, studentId), {
+                            behaviors: JSON.stringify(updatedBehaviors) // Store as JSON string
+                        });
+                        renderStudentReport(studentId); // Re-render the report modal
+                    }
+                    hideConfirmationModal();
+                } catch (e) {
+                    console.error("Error deleting behavior:", e);
+                    showConfirmationModal(`เกิดข้อผิดพลาดในการลบความประพฤติ: ${e.message}. โปรดตรวจสอบกฎ Firestore.`, () => {}, 'ตกลง', '', false);
+                } finally {
+                    hideLoading();
+                }
+            });
+        }
+
+        /**
+         * Calculates the total score for a given student.
+         * @param {string} studentId - The ID of the student.
+         * @returns {number} The total behavior score.
+         */
+        function calculateTotalScore(studentId) {
+            const student = students[studentId];
+            if (!student) return 0;
+            return (student.behaviors || []).reduce((sum, behavior) => sum + behavior.points, 0);
+        }
+
+        // --- Rendering and Display Functions ---
+
+        /**
+         * Populates the student select dropdown for behavior recording.
+         */
+        window.populateStudentSelect = () => { // Made global for access from Firebase init
+            behaviorStudentSelect.innerHTML = '<option value="">-- เลือกนักเรียน --</option>';
+            Object.values(students).forEach(student => {
+                const option = document.createElement('option');
+                option.value = student.id;
+                option.textContent = `${student.name} (${student.id})`;
+                behaviorStudentSelect.appendChild(option);
+            });
+        };
+
+        /**
+         * Renders the list of students in the main table.
+         */
+        function renderStudents() {
+            studentListTableBody.innerHTML = '';
+            let studentArray = Object.values(students);
+
+            // Filtering
+            const searchTerm = searchStudentInput.value.toLowerCase();
+            if (searchTerm) {
+                studentArray = studentArray.filter(student =>
+                    student.name.toLowerCase().includes(searchTerm) ||
+                    student.id.toLowerCase().includes(searchTerm) ||
+                    (student.teacherName && student.teacherName.toLowerCase().includes(searchTerm)) || 
+                    (student.className && student.className.toLowerCase().includes(searchTerm))       
+                );
+            }
+
+            // Sorting
+            const sortOption = sortStudentsSelect.value;
+            studentArray.sort((a, b) => {
+                if (sortOption === 'name-asc') {
+                    return a.name.localeCompare(b.name, 'th');
+                } else if (sortOption === 'name-desc') {
+                    return b.name.localeCompare(a.name, 'th');
+                } else if (sortOption === 'score-asc') {
+                    return calculateTotalScore(a.id) - calculateTotalScore(b.id);
+                } else if (sortOption === 'score-desc') {
+                    return calculateTotalScore(b.id) - calculateTotalScore(a.id);
+                }
+                return 0;
+            });
+
+            if (studentArray.length === 0) {
+                studentListTableBody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-gray-500">ไม่พบนักเรียน</td></tr>`; 
+                return;
+            }
+
+            studentArray.forEach(student => {
+                const totalScore = calculateTotalScore(student.id);
+                const row = studentListTableBody.insertRow();
+                row.className = 'hover:bg-gray-50';
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${student.id}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${student.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${student.teacherName || '-'}</td> 
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${student.className || '-'}</td>     
+                    <td class="px-6 py-4 whitespace-nowrap text-sm ${totalScore >= 0 ? 'text-green-600' : 'text-red-600'} font-semibold">${totalScore}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button class="text-indigo-600 hover:text-indigo-900 mr-3 view-report-btn" data-student-id="${student.id}">ดูรายงาน</button>
+                        <button class="text-red-600 hover:text-red-900 delete-student-btn" data-student-id="${student.id}">ลบ</button>
+                    </td>
+                `;
+            });
+
+            // Attach event listeners to new buttons
+            document.querySelectorAll('.view-report-btn').forEach(button => {
+                button.onclick = (e) => showStudentReport(e.target.dataset.studentId);
+            });
+            document.querySelectorAll('.delete-student-btn').forEach(button => {
+                button.onclick = (e) => deleteStudent(e.target.dataset.studentId);
+            });
+        }
+
+        /**
+         * Shows the individual student report modal.
+         * @param {string} studentId - The ID of the student to report on.
+         */
+        function showStudentReport(studentId) {
+            const student = students[studentId];
+            if (!student) return;
+
+            reportStudentName.textContent = `${student.name} (ID: ${student.id})`;
+            reportTeacherName.textContent = student.teacherName || '-'; 
+            reportClassName.textContent = student.className || '-';     
+            reportTotalScore.textContent = calculateTotalScore(student.id);
+            renderStudentReport(studentId);
+            studentReportModal.classList.add('show');
+        }
+
+        /**
+         * Renders the behavior records within the student report modal.
+         * @param {string} studentId - The ID of the student.
+         */
+        function renderStudentReport(studentId) {
+            reportBehaviorList.innerHTML = '';
+            const student = students[studentId];
+            if (!student || (student.behaviors || []).length === 0) {
+                reportBehaviorList.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-gray-500">ไม่พบข้อมูลความประพฤติ</td></tr>`;
+                return;
+            }
+
+            // Sort behaviors by date (newest first)
+            const sortedBehaviors = [...student.behaviors].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            sortedBehaviors.forEach(behavior => {
+                const row = reportBehaviorList.insertRow();
+                row.className = 'hover:bg-gray-50';
+                const typeBadgeClass = behavior.type === 'positive' ? 'badge-positive' : 'badge-negative';
+                const pointsColorClass = behavior.points >= 0 ? 'text-green-600' : 'text-red-600';
+
+                row.innerHTML = `
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${behavior.date}</td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm">
+                        <span class="badge ${typeBadgeClass}">
+                            ${behavior.type === 'positive' ? 'ความดี' : 'ความผิด'}
+                        </span>
+                    </td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm ${pointsColorClass} font-semibold">${behavior.points}</td>
+                    <td class="px-4 py-2 text-sm text-gray-900">${behavior.description}</td>
+                    <td class="px-4 py-2 whitespace-nowrap text-right text-sm font-medium">
+                        <button class="text-red-600 hover:text-red-900 delete-behavior-btn" data-student-id="${student.id}" data-behavior-id="${behavior.id}">ลบ</button>
+                    </td>
+                `;
+            });
+
+            // Re-calculate and update total score in the modal
+            reportTotalScore.textContent = calculateTotalScore(studentId);
+
+            // Attach event listeners to new behavior delete buttons
+            document.querySelectorAll('.delete-behavior-btn').forEach(button => {
+                button.onclick = (e) => deleteBehavior(e.target.dataset.studentId, e.target.dataset.behaviorId);
+            });
+        }
+
+        /**
+         * Hides the individual student report modal.
+         */
+        function hideStudentReport() {
+            studentReportModal.classList.remove('show');
+        }
+
+        /**
+         * Clears all data from Firestore after confirmation.
+         */
+        async function clearAllData() {
+            if (!window.isAuthReady || !window.studentsCollectionRef) {
+                showConfirmationModal('กรุณาเข้าสู่ระบบก่อนใช้งาน', () => {}, 'ตกลง', '', false);
+                return;
+            }
+
+            showConfirmationModal('คุณแน่ใจหรือไม่ที่จะลบข้อมูลนักเรียนและความประพฤติทั้งหมด? การกระทำนี้ไม่สามารถย้อนกลับได้!', async () => {
+                showLoading();
+                try {
+                    // Get all student documents and delete them one by one
+                    const snapshot = await getDocs(window.studentsCollectionRef);
+                    const deletePromises = [];
+                    snapshot.forEach(doc => {
+                        deletePromises.push(deleteDoc(doc.ref));
+                    });
+                    await Promise.all(deletePromises);
+
+                    // Clear local cache and re-render
+                    students = {};
+                    renderStudents();
+                    populateStudentSelect();
+                    hideConfirmationModal();
+
+                    showConfirmationModal('ล้างข้อมูลทั้งหมดเรียบร้อยแล้ว!', () => {}, 'ตกลง', '', false);
+                } catch (e) {
+                    console.error("Error clearing all data:", e);
+                    showConfirmationModal(`เกิดข้อผิดพลาดในการล้างข้อมูลทั้งหมด: ${e.message}. โปรดตรวจสอบกฎ Firestore.`, () => {}, 'ตกลง', '', false);
+                } finally {
+                    hideLoading();
+                }
+            });
+        }
+
+        // --- Event Listeners ---
+        addStudentBtn.addEventListener('click', addStudent);
+        recordBehaviorBtn.addEventListener('click', recordBehavior);
+        closeReportModalBtn.addEventListener('click', hideStudentReport);
+        clearAllDataBtn.addEventListener('click', clearAllData);
+
+        searchStudentInput.addEventListener('input', renderStudents);
+        sortStudentsSelect.addEventListener('change', renderStudents);
+
+        confirmYesBtn.addEventListener('click', () => {
+            if (confirmAction) {
+                confirmAction();
+            }
+        });
+
+        confirmNoBtn.addEventListener('click', () => {
+            hideConfirmationModal();
+        });
+
+        // Auth Event Listeners
+        loginBtn.addEventListener('click', loginUser);
+        registerBtn.addEventListener('click', registerUser);
+        logoutBtn.addEventListener('click', logoutUser);
+
+        toggleRegisterLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            authTitle.textContent = 'ลงทะเบียน';
+            loginBtn.classList.add('hidden');
+            registerBtn.classList.remove('hidden');
+            toggleRegisterLink.classList.add('hidden');
+            toggleLoginSection.classList.remove('hidden');
+            registerFields.classList.remove('hidden'); // Show new fields
+            clearAuthError();
+        });
+
+        toggleLoginLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            authTitle.textContent = 'เข้าสู่ระบบ';
+            loginBtn.classList.remove('hidden');
+            registerBtn.classList.add('hidden');
+            toggleRegisterLink.classList.remove('hidden');
+            toggleLoginSection.classList.add('hidden');
+            registerFields.classList.add('hidden'); // Hide new fields
+            clearAuthError();
+        });
+
+
+        // Tab event listeners
+        homeTabBtn.addEventListener('click', () => showTab('homeTabContent'));
+        addStudentTabBtn.addEventListener('click', () => showTab('addStudentTabContent'));
+        recordBehaviorTabBtn.addEventListener('click', () => showTab('recordBehaviorTabContent'));
+
+
+        // Initial setup when the page loads
+        window.addEventListener('load', () => {
+            // Firebase initialization is handled by the script in the head
+            // The onAuthStateChanged listener will handle UI update and data loading
+            sortStudentsSelect.value = 'score-desc'; // Set default sort option
+            // showTab('homeTabContent'); // This will be called by onAuthStateChanged if authenticated
         });
     </script>
-
 </body>
 </html>
